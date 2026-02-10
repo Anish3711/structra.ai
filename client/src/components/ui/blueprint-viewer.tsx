@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Building3DViewer } from "@/components/ui/building-3d-viewer";
 import {
   blueprintToSVG,
@@ -132,12 +131,12 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <div className="bg-white rounded-lg shadow border p-1 flex gap-1">
+          <div className="bg-[#0d2040] rounded-lg shadow-lg shadow-blue-900/30 border border-blue-800/40 p-1 flex gap-1">
             <Button
               variant={viewMode === "3d" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("3d")}
-              className="text-sm"
+              className={`text-sm ${viewMode === "3d" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-blue-300 hover:text-blue-200 hover:bg-blue-900/50"}`}
             >
               <Box className="w-4 h-4 mr-1.5" />
               3D View
@@ -146,7 +145,7 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
               variant={viewMode === "2d" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("2d")}
-              className="text-sm"
+              className={`text-sm ${viewMode === "2d" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-blue-300 hover:text-blue-200 hover:bg-blue-900/50"}`}
             >
               <FileText className="w-4 h-4 mr-1.5" />
               2D Blueprint
@@ -155,18 +154,18 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownloadSVG}>
+          <Button variant="outline" size="sm" onClick={handleDownloadSVG} className="border-blue-800/40 bg-[#0d2040] text-blue-300 hover:bg-blue-900/50 hover:text-blue-200">
             <Download className="w-3.5 h-3.5 mr-1.5" />
             SVG
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownloadPNG}>
+          <Button variant="outline" size="sm" onClick={handleDownloadPNG} className="border-blue-800/40 bg-[#0d2040] text-blue-300 hover:bg-blue-900/50 hover:text-blue-200">
             <FileImage className="w-3.5 h-3.5 mr-1.5" />
             PNG
           </Button>
         </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden border bg-white shadow-lg" style={{ minHeight: "550px" }}>
+      <div className="rounded-xl overflow-hidden border border-blue-900/50 bg-[#0a1628] shadow-lg shadow-blue-900/20" style={{ minHeight: "550px" }}>
         {viewMode === "3d" ? (
           <Building3DViewer
             floors={filteredFloors}
@@ -178,17 +177,16 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
         ) : (
           <div
             ref={svgContainerRef}
-            className="w-full overflow-auto bg-white p-4"
-            style={{ minHeight: "550px" }}
+            className="w-full overflow-auto p-4"
+            style={{ minHeight: "550px", background: "#0a1628" }}
             dangerouslySetInnerHTML={{ __html: svgString }}
           />
         )}
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <h4 className="text-sm font-semibold text-slate-700 mb-3">Component View</h4>
-          <p className="text-xs text-muted-foreground mb-3">
+      <div className="bg-[#0d2040] rounded-xl border border-blue-800/40 shadow-lg shadow-blue-900/20 p-4">
+          <h4 className="text-sm font-semibold text-blue-300 mb-3">Component View</h4>
+          <p className="text-xs text-blue-500/70 mb-3">
             Click a component to see its isolated blueprint
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -198,14 +196,14 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
                 <button
                   key={cf.id}
                   onClick={() => setActiveFilter(cf.id)}
-                  className={`flex items-center gap-2 p-2.5 rounded-lg border-2 transition-all text-left text-sm font-medium ${
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all text-left text-sm font-medium ${
                     isActive
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
-                      : `${cf.color} hover:shadow-sm hover:scale-[1.02]`
+                      ? "border-blue-400 bg-blue-600/20 text-blue-200 shadow-sm shadow-blue-500/20"
+                      : "border-blue-800/40 bg-[#0a1628] text-blue-400/80 hover:border-blue-600/50 hover:text-blue-300 hover:bg-blue-900/30"
                   }`}
                 >
-                  <span className={isActive ? "text-primary" : ""}>{cf.icon}</span>
-                  <span className={isActive ? "text-primary font-semibold" : ""}>{cf.label}</span>
+                  <span>{cf.icon}</span>
+                  <span>{cf.label}</span>
                 </button>
               );
             })}
@@ -213,13 +211,13 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
 
           {activeFilter === "single_flat" && totalFlats > 1 && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Select flat:</span>
+              <span className="text-xs text-blue-500/70">Select flat:</span>
               {Array.from({ length: totalFlats }).map((_, i) => (
                 <Button
                   key={i}
                   variant={selectedFlatIdx === i ? "default" : "outline"}
                   size="sm"
-                  className="h-7 text-xs"
+                  className={`h-7 text-xs ${selectedFlatIdx === i ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-800/40 text-blue-400 hover:text-blue-300 hover:bg-blue-900/50"}`}
                   onClick={() => setSelectedFlatIdx(i)}
                 >
                   Flat {i + 1}
@@ -230,13 +228,13 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
 
           {activeFilter === "floors" && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Select floor:</span>
+              <span className="text-xs text-blue-500/70">Select floor:</span>
               {blueprint.floors.map((f) => (
                 <Button
                   key={f.floor}
                   variant={activeFloor === f.floor ? "default" : "outline"}
                   size="sm"
-                  className="h-7 text-xs"
+                  className={`h-7 text-xs ${activeFloor === f.floor ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-800/40 text-blue-400 hover:text-blue-300 hover:bg-blue-900/50"}`}
                   onClick={() => setActiveFloor(f.floor)}
                 >
                   {f.label}
@@ -244,8 +242,7 @@ export function BlueprintViewer({ blueprint, buildingWidth, buildingDepth }: Blu
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }
