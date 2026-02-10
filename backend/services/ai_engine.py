@@ -8,10 +8,14 @@ from typing import List
 
 
 def get_openai_client():
+    base_url = os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
+    api_key = os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
+    if base_url and api_key:
+        return OpenAI(api_key=api_key, base_url=base_url)
     api_key = os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
-        return None
-    return OpenAI(api_key=api_key)
+    if api_key:
+        return OpenAI(api_key=api_key)
+    return None
 
 
 def generate_ai_analysis(
@@ -64,6 +68,8 @@ Return ONLY valid JSON with these fields:
   "hindi_summary": "Brief project summary in Hindi (2-3 sentences)"
 }}"""
 
+        # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+        # do not change this unless explicitly requested by the user
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -94,15 +100,16 @@ def _fallback_analysis(
     materials: List[MaterialItem],
 ) -> AIAnalysis:
     total_area = input.area_sqft * input.floors
+    btype = input.building_type.value if hasattr(input.building_type, 'value') else str(input.building_type)
     return AIAnalysis(
         project_summary=(
-            f"This is a {input.building_type} project spanning {total_area:,.0f} sqft across "
+            f"This is a {btype} project spanning {total_area:,.0f} sqft across "
             f"{input.floors} floors in {input.location}. Estimated total cost is ₹{costs.total_cost:,.0f} "
             f"(₹{costs.cost_per_sqft:,.0f}/sqft). The project requires {workers.total_workers} workers "
             f"and is planned to complete in {input.months_to_finish} months."
         ),
         risks=[
-            f"Soil type ({input.site_analysis.soil_type}) may require additional foundation treatment",
+            f"Soil type ({input.site_analysis.soil_type.value if hasattr(input.site_analysis.soil_type, 'value') else input.site_analysis.soil_type}) may require additional foundation treatment",
             "Material price fluctuations can impact budget by 5-15%",
             "Monsoon season delays possible in Indian construction",
             "Labour availability during festival seasons",
@@ -127,7 +134,7 @@ def _fallback_analysis(
             f"4) Consider prefab elements for repetitive floors."
         ),
         hindi_summary=(
-            f"यह {input.location} में {input.building_type} परियोजना है। "
+            f"यह {input.location} में {btype} परियोजना है। "
             f"कुल क्षेत्रफल {total_area:,.0f} वर्ग फीट, कुल लागत ₹{costs.total_cost:,.0f}।"
         ),
     )
