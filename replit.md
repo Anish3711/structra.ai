@@ -1,66 +1,80 @@
 # Structura.ai - AI-Powered Construction Planning
 
 ## Overview
-Structura.ai is a full-stack web application for AI-powered construction planning. It generates cost estimates, timelines, and architectural blueprints using advanced AI analysis. Functions as a full-fledged automated AutoCAD through AI.
+Structura.ai is a full-stack web application for AI-powered construction planning. It generates cost estimates, timelines, material lists, worker allocation, and architectural blueprints using advanced AI analysis. Functions as a full-fledged automated AutoCAD through AI.
 
 ## Tech Stack
 - **Frontend**: React 18 + Vite + TypeScript + Tailwind CSS + shadcn/ui
-- **Backend**: Express 5 + TypeScript
+- **Backend (Express)**: Express 5 + TypeScript (serves frontend, proxies /api/plan to Python)
+- **Backend (Python)**: FastAPI + Pydantic (runs on port 8000, handles all planning logic)
 - **Database**: PostgreSQL (Neon-backed via Replit) + Drizzle ORM
-- **AI**: OpenAI via Replit AI Integrations (gpt-5.1 for analysis and blueprint generation, gpt-image-1 for images)
+- **AI**: OpenAI via Python backend (gpt-4o-mini for analysis with fallback)
 - **3D**: Three.js via @react-three/fiber + @react-three/drei
 - **2D**: react-konva for blueprint editing
+
+## Architecture
+- Express (port 5000) serves the Vite React frontend and proxies `/api/plan` to Python FastAPI
+- FastAPI (port 8000) handles all construction planning with 6 engines:
+  - **calculation_engine**: Worker estimation and cost breakdown (with soil/amenity multipliers)
+  - **material_engine**: 11 material types with Indian rates (cement, steel, sand, bricks, etc.)
+  - **schedule_engine**: 9 construction phases with percentage-based week allocation
+  - **blueprint_engine**: Multi-floor flat layouts with corridors, utilities, water/electrical lines
+  - **ai_engine**: OpenAI GPT-4o-mini with JSON mode + fallback if API fails
+  - **formatters**: INR formatting utilities
 
 ## Project Structure
 ```
 ├── client/           # React frontend
 │   ├── src/
 │   │   ├── components/   # UI components (shadcn/ui based)
-│   │   │   └── ui/       # building-3d-viewer, blueprint-editor, select, etc.
-│   │   ├── pages/        # Page components (planner.tsx is main)
-│   │   ├── hooks/        # Custom hooks (use-construction.ts)
+│   │   ├── pages/        # Page components (planner.tsx is main 4-step wizard)
+│   │   ├── hooks/        # Custom hooks
 │   │   └── lib/          # Utilities
 │   └── index.html
-├── server/           # Express backend
-│   ├── index.ts      # Server entry point
-│   ├── routes.ts     # API routes + AI blueprint generation + fallback generator
+├── backend/          # Python FastAPI backend
+│   ├── main.py       # FastAPI app entry point
+│   ├── routes/       # API routes (/api/plan endpoint)
+│   ├── models/       # Pydantic models (ProjectInput, PlanResponse, etc.)
+│   ├── services/     # Business logic engines
+│   └── utils/        # INR formatting utilities
+├── server/           # Express backend (proxy + existing routes)
+│   ├── index.ts      # Server entry point (port 5000)
+│   ├── routes.ts     # API routes + /api/plan proxy to Python
 │   ├── db.ts         # Database connection
 │   ├── storage.ts    # Data access layer
-│   ├── lib/          # Utilities (DXF writer)
-│   └── replit_integrations/  # AI integration clients
+│   └── lib/          # Utilities (DXF writer)
 ├── shared/           # Shared types and schemas
-│   ├── schema.ts     # Drizzle DB schema + Room/FloorPlan/BuildingType types
-│   └── routes.ts     # API route definitions + ProjectInput type
+│   ├── schema.ts     # DB schema + Room/FloorPlan types
+│   └── routes.ts     # API route definitions
 └── package.json
 ```
 
 ## Key Features
-- Building type selector (House, Apartment, Commercial, Mixed-Use)
-- Construction cost estimation based on dimensions, floors, and location
-- AI-powered project analysis (cost reasoning, timeline justification, layout recommendations)
-- AI-powered blueprint generation with realistic multi-floor layouts
-  - Corridors, elevators, staircases, lobbies
-  - 16 room types: bedroom, living, kitchen, bathroom, corridor, staircase, elevator, lobby, dining, balcony, storage, utility, parking, office, laundry, other
-  - Fallback heuristic generator if AI fails
+- 4-step wizard planner: Project Details → Configuration → Results → Blueprint & AI
+- Site analysis with soil type, surroundings, constraints
+- Utilities configuration: electrical, plumbing, water tanks, water supply
+- Flat configuration: flats per floor, bedrooms, bathrooms, balconies, doors, windows
+- Amenities: pool, gym, parking, lift (for residential/apartment types)
+- Unified /api/plan endpoint returns: workers, costs, materials, schedule, blueprint, AI analysis
+- Cost breakdown with material/labour/overhead/contingency in INR
+- 11 material types with Indian market rates
+- 9-phase construction schedule with week-by-week timeline
+- Multi-floor blueprint with corridors, water tanks, electrical/water lines, terrace, roof
+- AI analysis: project summary, risks, recommendations, material insights, cost optimization, Hindi summary
+- Building type selector (House, Apartment, Commercial, Mixed-Use, Residential)
 - 3D building visualization with Three.js
-  - Floor-by-floor view, auto-rotation, room color coding
-  - Animated elevator shafts, staircase connectors
-  - All/single floor view toggle
 - 2D blueprint editor with customization tools
-  - Add/delete/resize/rename rooms
-  - Change room types
-  - Floor selector for multi-floor editing
-  - Drag-and-drop room positioning
-- DXF file export for CAD software
 
-## Running
-- `npm run dev` - Start development server on port 5000
-- `npm run db:push` - Push database schema changes
+## Workflows
+- **Python Backend**: `python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload`
+- **Start application**: `npx tsx server/index.ts` (Express on port 5000)
 
 ## Recent Changes
-- 2026-02-10: Major overhaul - AI-powered blueprint generation using GPT-5.1 with building type context
-- 2026-02-10: Added building type selector (House/Apartment/Commercial/Mixed-Use)
-- 2026-02-10: Enhanced 2D editor with add/delete/resize/rename rooms, floor selector, room type changer
-- 2026-02-10: Added elevator shafts, 16 room types, improved 3D viewer with new colors
-- 2026-02-10: Added 3D building viewer with Three.js (@react-three/fiber + drei)
-- 2026-02-10: Initial setup in Replit - installed dependencies, configured database, set up OpenAI integration
+- 2026-02-10: Added Python FastAPI backend with 6 engines replacing Express calculation logic
+- 2026-02-10: Rewrote planner.tsx as 4-step wizard with site analysis, flat config, amenities
+- 2026-02-10: Added /api/plan proxy from Express to Python FastAPI
+- 2026-02-10: Material rates hardcoded for Indian context (cement ₹380/bag, steel ₹65/kg, etc.)
+
+## User Preferences
+- Indian context (INR currency, Indian construction standards)
+- Extend existing code, do not recreate from scratch
