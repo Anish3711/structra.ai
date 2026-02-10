@@ -1,0 +1,164 @@
+IMPORTANT:
+This project already has a working Vite + TypeScript + Tailwind frontend.
+DO NOT recreate frontend.
+EXTEND it by adding backend and missing logic only.
+
+====================================================
+GOAL
+====================================================
+
+Convert my existing UI into a COMPLETE AI-powered Construction Planning System with full backend logic.
+
+Implement EVERYTHING below.
+
+====================================================
+BACKEND STACK
+====================================================
+
+Python FastAPI backend
+OpenAI API (temporary, modular for future Granite)
+CORS enabled
+
+Create:
+
+backend/
+ routes/
+ services/
+ models/
+ utils/
+
+====================================================
+INPUT FEATURES (implement ALL)
+====================================================
+
+Project Details:
+- area_sqft
+- floors
+- months_to_finish
+- location (default India)
+- unit selector
+
+Customer Type:
+- currency ₹
+- format numbers in K, M
+
+Site Analysis:
+- soil_type
+- surroundings
+- constraints
+
+Utilities:
+- electrical
+- plumbing
+- water tanks
+- water supply
+
+Flat Config:
+- flats_per_floor
+- bedrooms
+- bathrooms
+- balconies
+- doors
+- windows
+Use dropdowns not text inputs
+
+Amenities:
+- pool
+- gym
+- parking
+- lift
+Show ONLY when building_type == residential
+
+====================================================
+CALCULATIONS
+====================================================
+
+Worker estimation formulas
+Timeline auto-adjust based on months input
+Labour cost
+Material cost
+Overhead 10%
+Contingency 8%
+
+====================================================
+MATERIAL ENGINE
+====================================================
+
+Estimate quantities + costs for:
+cement, steel, sand, bricks, paint, tiles,
+doors, windows, wiring, plumbing, tanks
+
+====================================================
+SCHEDULE ENGINE
+====================================================
+
+Generate weekly phases:
+prep, foundation, structure, slab, plumbing,
+electrical, finishing, handover
+
+====================================================
+BLUEPRINT ENGINE (IMPORTANT)
+====================================================
+
+Return detailed JSON blueprint:
+
+floors
+ flats
+  rooms
+ corridors
+ terrace
+ roof
+ water tanks
+ electrical lines
+ water lines
+
+Also return:
+- overview summary
+- component breakdown
+
+====================================================
+AI ENGINE
+====================================================
+
+Use OpenAI:
+Return:
+- project summary
+- risks
+- recommendations
+- material insights
+- cost optimization
+- multi-language output (English + Indian languages)
+
+Make modular.
+
+====================================================
+OUTPUT FORMAT
+====================================================
+
+Return:
+1) numeric results first
+2) then visual structures
+
+====================================================
+ROUTE
+====================================================
+
+POST /api/plan
+
+Return:
+workers
+cost_breakdown
+materials
+timeline
+schedule
+blueprint
+ai_analysis
+
+====================================================
+CONNECT FRONTEND
+====================================================
+
+Use fetch() to connect.
+Do not redesign UI.
+
+Generate complete working backend code and integration.
