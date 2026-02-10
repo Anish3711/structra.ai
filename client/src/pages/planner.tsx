@@ -7,9 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ArrowRight, ArrowLeft, Wand2, FileText, AlertTriangle, TrendingUp, Lightbulb } from "lucide-react";
+import { Loader2, ArrowRight, ArrowLeft, Wand2, FileText, AlertTriangle, TrendingUp, Lightbulb, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+
+import residentialImg from "@/assets/building-types/residential.png";
+import apartmentImg from "@/assets/building-types/apartment.png";
+import commercialImg from "@/assets/building-types/commercial.png";
+import mixedUseImg from "@/assets/building-types/mixed-use.png";
+import houseImg from "@/assets/building-types/house.png";
+
+const BUILDING_TYPES = [
+  { value: "residential", label: "Residential", img: residentialImg },
+  { value: "apartment", label: "Apartment", img: apartmentImg },
+  { value: "commercial", label: "Commercial", img: commercialImg },
+  { value: "mixed-use", label: "Mixed Use", img: mixedUseImg },
+  { value: "house", label: "House", img: houseImg },
+];
 
 function formatINR(amount: number): string {
   if (amount >= 10000000) return `\u20B9${(amount / 10000000).toFixed(2)} Cr`;
@@ -236,23 +250,43 @@ function Step1ProjectDetails({ data, onChange, onNext }: { data: FormData; onCha
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Location</Label>
-            <Input value={data.location} onChange={(e) => onChange({ ...data, location: e.target.value })} placeholder="City, State, India" />
-          </div>
-          <div className="space-y-2">
-            <Label>Building Type</Label>
-            <Select value={data.building_type} onValueChange={(v) => onChange({ ...data, building_type: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="residential">Residential</SelectItem>
-                <SelectItem value="apartment">Apartment</SelectItem>
-                <SelectItem value="commercial">Commercial</SelectItem>
-                <SelectItem value="mixed-use">Mixed Use</SelectItem>
-                <SelectItem value="house">House</SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="space-y-2">
+          <Label>Location</Label>
+          <Input value={data.location} onChange={(e) => onChange({ ...data, location: e.target.value })} placeholder="City, State, India" />
+        </div>
+
+        <div className="space-y-3">
+          <Label className="text-base font-semibold">Building Type</Label>
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+            {BUILDING_TYPES.map((bt) => {
+              const isSelected = data.building_type === bt.value;
+              return (
+                <button
+                  key={bt.value}
+                  type="button"
+                  onClick={() => onChange({ ...data, building_type: bt.value })}
+                  className={`relative group rounded-xl border-2 p-2 transition-all duration-200 cursor-pointer text-center hover:shadow-md ${
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                  <img
+                    src={bt.img}
+                    alt={bt.label}
+                    className="w-full aspect-square object-cover rounded-lg mb-2"
+                  />
+                  <span className={`text-sm font-medium ${isSelected ? "text-primary" : "text-slate-700"}`}>
+                    {bt.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
