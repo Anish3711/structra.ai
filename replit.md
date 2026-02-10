@@ -10,7 +10,7 @@ Structura.ai is a full-stack web application for AI-powered construction plannin
 - **Database**: PostgreSQL (Neon-backed via Replit) + Drizzle ORM
 - **AI**: OpenAI via Python backend (gpt-4o-mini for analysis with fallback)
 - **3D**: Three.js via @react-three/fiber + @react-three/drei
-- **2D**: react-konva for blueprint editing
+- **2D**: Custom SVG renderer for architectural blueprints (blueprint-svg.ts)
 
 ## Architecture
 - Express (port 5000) serves the Vite React frontend and proxies `/api/plan` to Python FastAPI
@@ -62,14 +62,22 @@ Structura.ai is a full-stack web application for AI-powered construction plannin
 - Multi-floor blueprint with corridors, water tanks, electrical/water lines, terrace, roof
 - AI analysis: project summary, risks, recommendations, material insights, cost optimization, Hindi summary
 - Building type selector (House, Apartment, Commercial, Mixed-Use, Residential)
-- 3D building visualization with Three.js
-- 2D blueprint editor with customization tools
+- 3D building visualization with Three.js (auto-rotate, floor isolation, room hover)
+- 2D SVG architectural blueprint with corridors, doors, windows, room labels
+- 3D/2D toggle view with component filtering panel
+- Component isolation: floors, flats, corridors, single flat, parking, terrace, water tanks, water flow, electrical
+- SVG and PNG download for all blueprint views
+- Blueprint component filtering shows isolated systems (e.g. water connections show flow to all flats)
 
 ## Workflows
 - **Python Backend**: `python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload`
 - **Start application**: `npx tsx server/index.ts` (Express on port 5000)
 
 ## Recent Changes
+- 2026-02-10: Added 3D/2D blueprint viewer with component filtering, toggle, and download
+- 2026-02-10: Created modular SVG renderer (blueprint-svg.ts) with architectural floor plans
+- 2026-02-10: Added BlueprintViewer component with 10 component filter categories
+- 2026-02-10: Rewrote Step 4 to show visual 3D/2D blueprints instead of text-only
 - 2026-02-10: Added Python FastAPI backend with 6 engines replacing Express calculation logic
 - 2026-02-10: Rewrote planner.tsx as 4-step wizard with site analysis, flat config, amenities
 - 2026-02-10: Added /api/plan proxy from Express to Python FastAPI

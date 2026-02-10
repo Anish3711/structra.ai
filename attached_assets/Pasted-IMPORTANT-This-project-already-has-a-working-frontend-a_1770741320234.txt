@@ -1,0 +1,141 @@
+IMPORTANT:
+This project already has a working frontend and blueprint SVG renderer.
+DO NOT recreate anything.
+ONLY extend the current blueprint system.
+
+Your task:
+Upgrade the existing "blueprint JSON → SVG floor plan" feature to support:
+
+1) Automatic corridors
+2) Automatic doors
+3) Automatic windows
+
+This must look like a real architectural layout.
+
+====================================================
+GOAL
+====================================================
+
+Convert blueprint JSON into a smarter architectural SVG floor plan with:
+
+• rooms
+• bathrooms
+• balconies
+• corridor
+• doors
+• windows
+• flat boundary
+• floor labels
+
+Everything auto-positioned using layout logic.
+
+====================================================
+IMPLEMENTATION DETAILS
+====================================================
+
+Modify or extend:
+
+src/utils/blueprintToSVG.ts
+
+Do NOT create heavy libraries.
+Use pure SVG rectangles + lines only.
+
+====================================================
+REQUIRED FEATURES
+====================================================
+
+1) AUTO CORRIDOR
+- Add one horizontal corridor per floor
+- Corridor runs through center
+- Width ~ 40px
+- Color light gray
+- All rooms connect to corridor
+
+2) ROOMS
+- Place rooms above and below corridor
+- Evenly spaced
+- Maintain consistent size
+- Label each room
+
+3) DOORS
+- Add door at each room entrance to corridor
+- Door = small brown rectangle (10x20)
+- Place between room and corridor
+
+4) WINDOWS
+- Add windows on external walls only
+- Window = thin blue line
+- Place 1–2 per room
+- Avoid corridor side
+
+5) BATHROOMS
+- Smaller size
+- Different color (#fde68a)
+
+6) BALCONY
+- Shallow rectangle
+- Different color (#bbf7d0)
+
+7) FLAT OUTLINE
+- Thick black border
+
+8) FLOOR LABELS
+- "Floor 1", "Floor 2"
+
+====================================================
+ALGORITHM RULES
+====================================================
+
+For each floor:
+
+- draw corridor first
+- split rooms half above, half below
+- auto calculate x spacing
+- attach door to corridor side
+- add windows to outer side only
+
+====================================================
+OUTPUT
+====================================================
+
+Function must return SVG string:
+
+export function blueprintToSVG(blueprint)
+
+Return complete scalable SVG.
+
+====================================================
+BONUS (implement)
+====================================================
+
+Add helper functions:
+
+drawRoom()
+drawBathroom()
+drawBalcony()
+drawDoor()
+drawWindow()
+drawCorridor()
+
+Keep code clean and modular.
+
+====================================================
+UI
+====================================================
+
+No UI redesign.
+Just render upgraded SVG inside existing BlueprintView.
+
+====================================================
+RESULT EXPECTATION
+====================================================
+
+When API returns blueprint JSON, UI should show:
+
+- proper floor layout
+- central corridor
+- doors visible
+- windows visible
+- looks like real apartment plan
+
+Generate complete updated code.

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Steps } from "@/components/ui/steps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowRight, ArrowLeft, Wand2, FileText, AlertTriangle, TrendingUp, Lightbulb, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { BlueprintViewer } from "@/components/ui/blueprint-viewer";
 
 import residentialImg from "@/assets/building-types/residential.png";
 import apartmentImg from "@/assets/building-types/apartment.png";
@@ -590,19 +591,29 @@ function Step3Results({ result, onNext, onBack }: { result: PlanResult; onNext: 
 function Step4BlueprintAI({ result, onBack }: { result: PlanResult; onBack: () => void }) {
   const { blueprint, ai_analysis } = result;
 
+  const buildingDims = useMemo(() => {
+    let maxW = 0;
+    let maxD = 0;
+    for (const floor of blueprint.floors || []) {
+      for (const room of floor.rooms || []) {
+        maxW = Math.max(maxW, room.x + room.width);
+        maxD = Math.max(maxD, room.y + room.height);
+      }
+    }
+    return { width: maxW || 50, depth: maxD || 40 };
+  }, [blueprint]);
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold font-display">Blueprint & AI Analysis</h2>
         <Button variant="outline" onClick={onBack}>Back to Results</Button>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Blueprint Overview</CardTitle></CardHeader>
-        <CardContent>
+      <Card className="border-t-4 border-t-primary">
+        <CardContent className="p-4">
           <p className="text-muted-foreground mb-4">{blueprint.overview}</p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {blueprint.component_breakdown?.map((c: any, i: number) => (
               <div key={i} className="p-3 rounded-lg bg-slate-50 border text-center">
                 <div className="text-xl font-bold text-primary">{c.count}</div>
@@ -610,82 +621,14 @@ function Step4BlueprintAI({ result, onBack }: { result: PlanResult; onBack: () =
               </div>
             ))}
           </div>
-
-          <Separator className="my-4" />
-
-          <h4 className="font-semibold mb-3">Floor Plans</h4>
-          <div className="space-y-4">
-            {blueprint.floors?.map((floor: any, fi: number) => (
-              <Card key={fi} className="border-l-4 border-l-primary/50">
-                <CardContent className="p-4">
-                  <h5 className="font-semibold mb-2">{floor.label}</h5>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {floor.rooms?.map((room: any, ri: number) => (
-                      <div key={ri} className="p-2 rounded bg-primary/5 border border-primary/10 text-sm">
-                        <div className="font-medium">{room.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {room.width.toFixed(0)}' x {room.height.toFixed(0)}' ({room.type})
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {floor.flats && floor.flats.length > 0 && (
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Flats: {floor.flats.map((f: any) => f.label).join(", ")}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </CardContent>
       </Card>
 
-      {blueprint.water_tanks?.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Water Tanks</CardTitle></CardHeader>
-            <CardContent>
-              {blueprint.water_tanks.map((t: any, i: number) => (
-                <div key={i} className="text-sm mb-1">{t.id}: {t.capacity_litres}L ({t.location})</div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Electrical Lines</CardTitle></CardHeader>
-            <CardContent>
-              {blueprint.electrical_lines?.map((l: any, i: number) => (
-                <div key={i} className="text-sm mb-1">{l.type}: {l.from} &rarr; {l.to}</div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Water Lines</CardTitle></CardHeader>
-            <CardContent>
-              {blueprint.water_lines?.map((l: any, i: number) => (
-                <div key={i} className="text-sm mb-1">{l.from} &rarr; {l.to}</div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {blueprint.terrace && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Terrace</CardTitle></CardHeader>
-            <CardContent className="text-sm">
-              Area: {blueprint.terrace.area_sqft} sqft | Railing: {blueprint.terrace.has_railing ? "Yes" : "No"} | Waterproofing: {blueprint.terrace.water_proofing ? "Yes" : "No"}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Roof</CardTitle></CardHeader>
-            <CardContent className="text-sm">
-              Type: {blueprint.roof?.type} | Area: {blueprint.roof?.area_sqft} sqft
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <BlueprintViewer
+        blueprint={blueprint}
+        buildingWidth={buildingDims.width}
+        buildingDepth={buildingDims.depth}
+      />
 
       <Separator />
 
@@ -694,20 +637,16 @@ function Step4BlueprintAI({ result, onBack }: { result: PlanResult; onBack: () =
       </h3>
 
       <Card className="border-l-4 border-l-blue-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-blue-500" /> Project Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
+          <h4 className="font-semibold flex items-center gap-2 mb-2"><FileText className="h-4 w-4 text-blue-500" /> Project Summary</h4>
           <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{ai_analysis.project_summary}</p>
         </CardContent>
       </Card>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="border-l-4 border-l-red-400">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-red-500" /> Risks</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
+            <h4 className="font-semibold flex items-center gap-2 text-base mb-2"><AlertTriangle className="h-4 w-4 text-red-500" /> Risks</h4>
             <ul className="space-y-2">
               {ai_analysis.risks?.map((r: string, i: number) => (
                 <li key={i} className="flex gap-2 text-sm text-muted-foreground">
@@ -719,10 +658,8 @@ function Step4BlueprintAI({ result, onBack }: { result: PlanResult; onBack: () =
         </Card>
 
         <Card className="border-l-4 border-l-green-400">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Lightbulb className="h-4 w-4 text-green-500" /> Recommendations</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
+            <h4 className="font-semibold flex items-center gap-2 text-base mb-2"><Lightbulb className="h-4 w-4 text-green-500" /> Recommendations</h4>
             <ul className="space-y-2">
               {ai_analysis.recommendations?.map((r: string, i: number) => (
                 <li key={i} className="flex gap-2 text-sm text-muted-foreground">
@@ -734,30 +671,26 @@ function Step4BlueprintAI({ result, onBack }: { result: PlanResult; onBack: () =
         </Card>
       </div>
 
-      <Card className="border-l-4 border-l-purple-400">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><TrendingUp className="h-4 w-4 text-purple-500" /> Material Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground leading-relaxed">{ai_analysis.material_insights}</p>
-        </CardContent>
-      </Card>
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border-l-4 border-l-purple-400">
+          <CardContent className="pt-6">
+            <h4 className="font-semibold flex items-center gap-2 text-base mb-2"><TrendingUp className="h-4 w-4 text-purple-500" /> Material Insights</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">{ai_analysis.material_insights}</p>
+          </CardContent>
+        </Card>
 
-      <Card className="border-l-4 border-l-amber-400">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><TrendingUp className="h-4 w-4 text-amber-500" /> Cost Optimization</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground leading-relaxed">{ai_analysis.cost_optimization}</p>
-        </CardContent>
-      </Card>
+        <Card className="border-l-4 border-l-amber-400">
+          <CardContent className="pt-6">
+            <h4 className="font-semibold flex items-center gap-2 text-base mb-2"><TrendingUp className="h-4 w-4 text-amber-500" /> Cost Optimization</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">{ai_analysis.cost_optimization}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {ai_analysis.hindi_summary && (
         <Card className="border-l-4 border-l-orange-400 bg-orange-50/30">
-          <CardHeader>
-            <CardTitle className="text-base">Hindi Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
+            <h4 className="font-semibold text-base mb-2">Hindi Summary</h4>
             <p className="text-sm text-muted-foreground leading-relaxed">{ai_analysis.hindi_summary}</p>
           </CardContent>
         </Card>
