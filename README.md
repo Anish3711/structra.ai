@@ -1,3 +1,6 @@
+Project live link: 
+https://6572a28d-4736-4436-850a-d0286163a808-00-2r1q9n8nizili.pike.replit.dev/
+
 # Structura.ai - AI-Powered Construction Planning
 
 Structura.ai is a full-stack web application for AI-powered construction planning. It generates cost estimates, timelines, material lists, worker allocation, and architectural blueprints using advanced AI analysis. It functions as a full-fledged automated AutoCAD through AI, specifically tailored for the Indian construction context.
