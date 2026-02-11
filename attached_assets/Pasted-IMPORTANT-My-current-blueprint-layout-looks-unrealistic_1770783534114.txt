@@ -1,0 +1,85 @@
+IMPORTANT:
+My current blueprint layout looks unrealistic.
+Rooms are placed only on one side of corridor.
+Fix this by implementing REAL architectural logic.
+
+Do NOT use random placement.
+
+====================================================
+GOAL
+====================================================
+
+Make blueprint generator follow real-world apartment building design like professional architectural plans.
+
+Layout must look realistic like civil/engineering blueprints.
+
+====================================================
+CREATE NEW MODULE
+====================================================
+
+src/utils/blueprint/layoutEngine.ts
+
+====================================================
+LAYOUT RULES (MANDATORY)
+====================================================
+
+1) Corridor ALWAYS in center
+   width ~ 120px
+
+2) Flats placed BOTH sides of corridor
+   left and right
+
+3) Rooms inside flats using grid layout
+   bedroom, kitchen, bath logically arranged
+
+4) Bathrooms near plumbing shaft
+
+5) Windows only on outer walls
+
+6) Doors face corridor
+
+7) Add stairs/lift core near center
+
+8) Same vertical alignment for:
+   - electrical riser
+   - plumbing riser
+   - stairs
+   across all floors
+
+====================================================
+ENGINEERING STYLE
+====================================================
+
+Render like real blueprint:
+
+- thin white lines
+- dark blue background
+- wall thickness
+- grid background
+- no cartoon boxes
+- use outline drawings only
+
+====================================================
+ALGORITHM
+====================================================
+
+For each floor:
+
+- split width into: flat | corridor | flat
+- place flats on both sides
+- inside each flat auto-arrange rooms
+- then call:
+   architecture()
+   electrical()
+   plumbing()
+
+====================================================
+OUTPUT
+====================================================
+
+Return professional looking architectural SVG
+similar to AutoCAD blueprint.
+
+It must visually resemble real construction drawings.
+
+Generate complete TypeScript implementation.
