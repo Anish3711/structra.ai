@@ -1,0 +1,110 @@
+IMPORTANT:
+My current plumbing and electrical drawings are only visual lines.
+They are NOT truly connected networks.
+
+Upgrade blueprint system to create REAL connected infrastructure networks.
+
+====================================================
+GOAL
+====================================================
+
+Implement REALISTIC plumbing and electrical systems where:
+
+- every flat is physically connected
+- pipes and wires follow logical routing
+- flow animation shows movement
+- looks like real engineering diagrams
+
+====================================================
+ARCHITECTURE
+====================================================
+
+Keep architecture layer separate.
+
+Create:
+
+src/utils/blueprint/
+    plumbingNetwork.ts
+    electricalNetwork.ts
+
+====================================================
+PLUMBING NETWORK (MANDATORY)
+====================================================
+
+Design true pipe routing:
+
+1) One overhead tank on roof
+2) One vertical riser pipe down all floors
+3) For each floor:
+     create horizontal branch
+4) From branch:
+     connect pipe to each flat bathroom/kitchen
+
+Rules:
+- bathrooms near shaft
+- shortest path routing
+- pipes always connected
+
+Draw:
+- blue lines
+- small joints at intersections
+- arrows for direction
+
+Animation:
+stroke-dasharray
+stroke-dashoffset animation
+simulate water flow
+
+====================================================
+ELECTRICAL NETWORK (MANDATORY)
+====================================================
+
+Design realistic wiring:
+
+1) main meter at ground
+2) vertical electrical riser
+3) floor distribution board
+4) branch to each flat
+5) inside flat connect to switchboard
+
+Rules:
+- tree structure
+- no floating wires
+- always connected
+
+Draw:
+- yellow/orange lines
+- nodes at panels
+
+Animation:
+faster dash animation to simulate current
+
+====================================================
+IMPLEMENTATION
+====================================================
+
+Both systems must use graph/tree logic:
+
+source → branch → endpoints
+
+NOT random lines.
+
+Create helper:
+
+generateNetworkPaths(nodes)
+
+Then draw SVG paths.
+
+====================================================
+RESULT
+====================================================
+
+Final blueprint must show:
+
+- architecture
+- plumbing pipes with flowing animation
+- electrical wires with flowing animation
+- every flat connected
+- looks like real civil/electrical blueprint
+
+Generate full TypeScript code.

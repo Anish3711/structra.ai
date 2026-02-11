@@ -1,3 +1,6 @@
+import { generatePlumbingNetwork } from "./blueprint/plumbingNetwork";
+import { generateElectricalNetwork } from "./blueprint/electricalNetwork";
+
 export interface SVGRoom {
   id: string;
   name: string;
@@ -257,69 +260,18 @@ function drawWindowsForRoom(room: SVGRoom, bw: number, bd: number, ox: number, o
 function drawPlumbingShaft(ox: number, oy: number, floorH: number, shaftX: number): string {
   const sx = ox + shaftX * S;
   const sw = 3 * S;
-  return `<g opacity="0.4">
-    <rect x="${sx}" y="${oy}" width="${sw}" height="${floorH}" fill="none" stroke="#4a90b0" stroke-width="0.6" stroke-dasharray="3 2"/>
-    <text x="${sx + sw / 2}" y="${oy + 8}" text-anchor="middle" font-size="5" fill="#4a90b0" opacity="0.7">PLMB</text>
-    <line x1="${sx + sw / 2}" y1="${oy + 10}" x2="${sx + sw / 2}" y2="${oy + floorH - 2}" stroke="#4a90b0" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.5"/>
+  return `<g opacity="0.3">
+    <rect x="${sx}" y="${oy}" width="${sw}" height="${floorH}" fill="none" stroke="#4a90b0" stroke-width="0.4" stroke-dasharray="3 2"/>
+    <text x="${sx + sw / 2}" y="${oy + 8}" text-anchor="middle" font-size="5" fill="#4a90b0" opacity="0.5">SHAFT</text>
   </g>`;
 }
 
 function drawElectricalRiser(ox: number, oy: number, floorH: number, riserX: number): string {
   const rx = ox + riserX * S;
-  return `<g opacity="0.4">
-    <rect x="${rx - 4}" y="${oy}" width="8" height="${floorH}" fill="none" stroke="#c0a040" stroke-width="0.5" stroke-dasharray="2 3"/>
-    <text x="${rx}" y="${oy + 8}" text-anchor="middle" font-size="5" fill="#c0a040" opacity="0.7">ELEC</text>
-    <line x1="${rx}" y1="${oy + 10}" x2="${rx}" y2="${oy + floorH - 2}" stroke="#c0a040" stroke-width="0.4" stroke-dasharray="4 3" opacity="0.4"/>
+  return `<g opacity="0.3">
+    <rect x="${rx - 4}" y="${oy}" width="8" height="${floorH}" fill="none" stroke="#c0a040" stroke-width="0.3" stroke-dasharray="2 3"/>
+    <text x="${rx}" y="${oy + 8}" text-anchor="middle" font-size="5" fill="#c0a040" opacity="0.5">RISER</text>
   </g>`;
-}
-
-function drawWaterConnections(blueprint: SVGBlueprint, ox: number, oy: number, totalW: number, totalH: number): string {
-  let svg = "";
-  const lines = blueprint.water_lines;
-  if (!lines || lines.length === 0) return "";
-
-  const mainX = ox + totalW + 25;
-  const pipeStartY = oy + 20;
-  const pipeEndY = oy + totalH - 20;
-
-  svg += `<line x1="${mainX}" y1="${pipeStartY}" x2="${mainX}" y2="${pipeEndY}" stroke="#4a90b0" stroke-width="2" stroke-dasharray="6 3"/>`;
-  svg += `<text x="${mainX + 6}" y="${pipeStartY + 8}" font-size="7" fill="#6ab0d0" font-weight="500" letter-spacing="1">SUPPLY</text>`;
-
-  const fc = blueprint.floors.length;
-  for (let i = 0; i < fc; i++) {
-    const brY = pipeStartY + (i + 0.5) * ((pipeEndY - pipeStartY) / fc);
-    svg += `<line x1="${ox + totalW}" y1="${brY}" x2="${mainX}" y2="${brY}" stroke="#3a7890" stroke-width="1.2" stroke-dasharray="4 2"/>`;
-    svg += `<circle cx="${mainX}" cy="${brY}" r="2.5" fill="none" stroke="#6ab0d0" stroke-width="1"/>`;
-    svg += `<circle cx="${mainX}" cy="${brY}" r="1" fill="#6ab0d0"/>`;
-    svg += `<text x="${mainX + 6}" y="${brY + 3}" font-size="6" fill="${TXT_DIM}">F${i}</text>`;
-  }
-  svg += `<line x1="${mainX}" y1="${pipeEndY}" x2="${mainX}" y2="${pipeEndY + 15}" stroke="#904040" stroke-width="1.5"/>`;
-  svg += `<text x="${mainX + 6}" y="${pipeEndY + 12}" font-size="6" fill="#c06060">DRAIN</text>`;
-
-  return svg;
-}
-
-function drawElectricalConnections(blueprint: SVGBlueprint, ox: number, oy: number, totalW: number, totalH: number): string {
-  let svg = "";
-  const lines = blueprint.electrical_lines;
-  if (!lines || lines.length === 0) return "";
-
-  const mainX = ox - 25;
-  const dbY = oy + 15;
-
-  svg += `<rect x="${mainX - 10}" y="${dbY}" width="20" height="18" fill="${BG}" stroke="#c0a040" stroke-width="1" rx="1"/>`;
-  svg += `<text x="${mainX}" y="${dbY + 8}" text-anchor="middle" font-size="6" font-weight="500" fill="#d0b050">DB</text>`;
-  svg += `<text x="${mainX}" y="${dbY + 14}" text-anchor="middle" font-size="5" fill="#b09030">MAIN</text>`;
-
-  const fc = blueprint.floors.length;
-  for (let i = 0; i < fc; i++) {
-    const brY = oy + (i + 0.5) * (totalH / fc);
-    svg += `<line x1="${mainX}" y1="${dbY + 18}" x2="${mainX}" y2="${brY}" stroke="#c0a040" stroke-width="1.2"/>`;
-    svg += `<line x1="${mainX}" y1="${brY}" x2="${ox}" y2="${brY}" stroke="#b09030" stroke-width="1" stroke-dasharray="4 3"/>`;
-    svg += `<circle cx="${mainX}" cy="${brY}" r="2.5" fill="none" stroke="#d0b050" stroke-width="1"/>`;
-    svg += `<text x="${mainX - 14}" y="${brY + 3}" font-size="6" fill="#b09030">F${i}</text>`;
-  }
-  return svg;
 }
 
 function drawParkingLevel(ox: number, oy: number, width: number): string {
@@ -393,16 +345,16 @@ export function blueprintToSVG(
       ? blueprint.floors.filter((f) => f.floor === selectedFloor)
       : blueprint.floors;
 
-  let extraR = 0, extraL = 0, extraB = 0;
-  if (filter === "water_connections" || filter === "all") extraR = 70;
-  if (filter === "electrical_connections" || filter === "all") extraL = 50;
+  let extraR = 0, extraL = 0, extraB = 0, extraT = 0;
+  if (filter === "water_connections" || filter === "all") extraT = 60;
+  if (filter === "electrical_connections" || filter === "all") extraB += 70;
   if (filter === "parking" || filter === "all") extraB += 70;
   if (filter === "terrace" || filter === "all") extraB += 55;
   if (filter === "water_tanks" || filter === "all") extraB += 45;
 
   const totalFloorH = floorsToRender.length * (floorH + FLOOR_GAP);
   const svgW = PAD * 2 + bW * S + extraR + extraL;
-  const svgH = PAD * 2 + totalFloorH + extraB + 40;
+  const svgH = PAD * 2 + totalFloorH + extraB + extraT + 40;
   const baseOx = PAD + extraL;
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="background:${BG};font-family:'Courier New',monospace">`;
@@ -493,10 +445,14 @@ export function blueprintToSVG(
   const totalH = floorsToRender.length * (floorH + FLOOR_GAP);
 
   if (filter === "water_connections" || filter === "all") {
-    svg += drawWaterConnections(blueprint, baseOx, PAD + 20, bW * S, totalH);
+    svg += generatePlumbingNetwork(
+      floorsToRender, bW, bD, baseOx, PAD + 20, S, floorH, FLOOR_GAP
+    );
   }
   if (filter === "electrical_connections" || filter === "all") {
-    svg += drawElectricalConnections(blueprint, baseOx, PAD + 20, bW * S, totalH);
+    svg += generateElectricalNetwork(
+      floorsToRender, bW, bD, baseOx, PAD + 20, S, floorH, FLOOR_GAP
+    );
   }
   if (filter === "parking" || filter === "all") {
     svg += drawParkingLevel(baseOx, bottomY, bW);
