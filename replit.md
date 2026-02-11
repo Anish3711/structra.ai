@@ -59,7 +59,7 @@ Structura.ai is a full-stack web application for AI-powered construction plannin
 - Cost breakdown with material/labour/overhead/contingency in INR
 - 11 material types with Indian market rates
 - 9-phase construction schedule with week-by-week timeline
-- AI-generated floor plans with architectural rules (corridor at edge, lift in common area, proportional rooms)
+- AI-generated floor plans with architectural rules (CENTER corridor, flats on BOTH sides, stairs/lift core near center, plumbing shaft alignment)
 - Multi-floor blueprint with corridors, water tanks, electrical/water lines, terrace, roof
 - AI analysis: project summary, risks, recommendations, material insights, cost optimization, Hindi summary
 - Building type selector (House, Apartment, Commercial, Mixed-Use, Residential)
@@ -75,6 +75,8 @@ Structura.ai is a full-stack web application for AI-powered construction plannin
 - **Start application**: `npx tsx server/index.ts` (Express on port 5000)
 
 ## Recent Changes
+- 2026-02-11: Rewrote blueprint engine with CENTER corridor layout - flats on BOTH sides, stairs/lift core near center, plumbing shaft alignment, enhanced AI validation
+- 2026-02-11: Rewrote SVG renderer for professional AutoCAD-style engineering drawings (thin white lines, dark background, wall thickness, engineering hatching, dimension lines, monospace font)
 - 2026-02-10: Added interactive blueprint editor (add/remove/edit rooms with Customize button)
 - 2026-02-10: Rewrote 3D viewer with wireframe walls, exterior envelope, animated elevator shaft, floor slabs
 - 2026-02-10: Integrated OpenAI via Replit AI Integrations for AI-generated floor layouts

@@ -175,9 +175,29 @@ def _validate_blueprint(bp: BlueprintData) -> bool:
     for floor in bp.floors:
         if not floor.rooms or len(floor.rooms) < 3:
             return False
-        has_corridor = any(r.type == "corridor" for r in floor.rooms)
-        if not has_corridor:
+
+        corridor = next((r for r in floor.rooms if r.type == "corridor"), None)
+        if not corridor:
             return False
+
+        non_corridor = [r for r in floor.rooms if r.type not in ("corridor", "elevator", "staircase")]
+        if not non_corridor:
+            return False
+
+        corr_center = corridor.y + corridor.height / 2
+        building_depth = max(r.y + r.height for r in floor.rooms)
+        if building_depth > 0:
+            ratio = corr_center / building_depth
+            if ratio < 0.25 or ratio > 0.75:
+                print(f"Corridor not centered: ratio={ratio:.2f}")
+                return False
+
+        rooms_above = [r for r in non_corridor if r.y + r.height <= corridor.y + 2]
+        rooms_below = [r for r in non_corridor if r.y >= corridor.y + corridor.height - 2]
+        if len(rooms_above) == 0 or len(rooms_below) == 0:
+            print("No rooms on both sides of corridor")
+            return False
+
         for room in floor.rooms:
             if room.width <= 0 or room.height <= 0:
                 return False

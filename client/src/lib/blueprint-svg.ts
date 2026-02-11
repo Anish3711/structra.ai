@@ -221,9 +221,9 @@ function drawDoorsForRoom(room: SVGRoom, corridorY: number, corridorH: number, o
   const cTop = oy + corridorY * S;
   const cBot = cTop + corridorH * S;
 
-  if (Math.abs(ry + rh - cTop) < 4) {
+  if (Math.abs(ry + rh - cTop) < S * 2) {
     parts += drawDoorArc(rx + rw * 0.4, ry + rh, "down");
-  } else if (Math.abs(ry - cBot) < 4) {
+  } else if (Math.abs(ry - cBot) < S * 2) {
     parts += drawDoorArc(rx + rw * 0.4, ry, "up");
   }
   return parts;
