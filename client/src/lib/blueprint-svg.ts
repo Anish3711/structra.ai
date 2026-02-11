@@ -37,168 +37,240 @@ export type ComponentFilter =
   | "water_connections"
   | "electrical_connections";
 
-const SCALE = 8;
-const PADDING = 40;
-const FLOOR_GAP = 60;
-const DOOR_W = 6;
-const DOOR_H = 3;
-const WINDOW_W = 8;
-const WINDOW_H = 2;
+const S = 7;
+const PAD = 80;
+const FLOOR_GAP = 90;
+const WALL = 2.5;
+const WALL_INNER = 1.5;
 
-const BP_BG = "#0a1628";
-const BP_LINE = "#4a9eff";
-const BP_LINE_LIGHT = "#2a6cb8";
-const BP_TEXT = "#7ec8e3";
-const BP_TEXT_DIM = "#3d7ab5";
-const BP_ACCENT = "#00d4ff";
-const BP_WHITE = "#c8e6ff";
-const BP_GRID = "#0d2040";
+const BG = "#0a1929";
+const LINE = "#c8dce8";
+const LINE_DIM = "#4a6a80";
+const LINE_ACCENT = "#6ab7e8";
+const TXT = "#90b8d0";
+const TXT_DIM = "#4a6a80";
+const TXT_BRIGHT = "#d4eaf5";
+const GRID_COLOR = "#0e2238";
+const DIM_COLOR = "#5a9ab5";
+const HATCH_COLOR = "#3a5a70";
 
-const ROOM_LINE_COLORS: Record<string, string> = {
-  bedroom: "#5ba3d9",
-  living: "#4ecdc4",
-  kitchen: "#7ec8e3",
-  bathroom: "#64b5f6",
-  corridor: "#3d7ab5",
-  staircase: "#5ba3d9",
-  elevator: "#42a5f5",
-  lobby: "#64b5f6",
-  dining: "#4dd0e1",
-  balcony: "#26c6da",
-  storage: "#546e7a",
-  utility: "#4a7c9b",
-  parking: "#37687e",
-  office: "#4fc3f7",
-  laundry: "#4dd0e1",
-  other: "#4a9eff",
+const ROOM_COLORS: Record<string, string> = {
+  bedroom: "#8ab4d0",
+  living: "#8ec8b8",
+  kitchen: "#a0c8d8",
+  bathroom: "#7aaac0",
+  corridor: "#5a8aa0",
+  staircase: "#7ab0c8",
+  elevator: "#6aa0c0",
+  lobby: "#7aaac0",
+  dining: "#80c0c8",
+  balcony: "#60b8c0",
+  storage: "#607880",
+  utility: "#5a8898",
+  parking: "#486878",
+  office: "#70b8d8",
+  laundry: "#70c0c8",
+  other: "#7ab0c8",
 };
 
-function escapeXml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function drawRoom(room: SVGRoom, ox: number, oy: number): string {
-  const x = ox + room.x * SCALE;
-  const y = oy + room.y * SCALE;
-  const w = room.width * SCALE;
-  const h = room.height * SCALE;
-  const lineColor = ROOM_LINE_COLORS[room.type] || BP_LINE;
-
-  const fontSize = Math.min(w, h) > 60 ? 11 : 9;
-  const label = room.name.length > 12 ? room.name.slice(0, 12) + "…" : room.name;
-  const dimLabel = `${room.width.toFixed(0)}'×${room.height.toFixed(0)}'`;
-
-  let crosshatch = "";
-  if (room.type === "bathroom" || room.type === "kitchen") {
-    crosshatch = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#hatch-${room.type === "bathroom" ? "bath" : "kitchen"})" opacity="0.3"/>`;
-  }
-
-  return `<g class="room" data-room-id="${escapeXml(room.id)}" data-room-type="${escapeXml(room.type)}">
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${lineColor}" stroke-width="1.2" rx="0"/>
-  ${crosshatch}
-  <text x="${x + w / 2}" y="${y + h / 2 - 4}" text-anchor="middle" font-size="${fontSize}" font-weight="600" fill="${BP_WHITE}" opacity="0.9">${escapeXml(label)}</text>
-  <text x="${x + w / 2}" y="${y + h / 2 + 10}" text-anchor="middle" font-size="8" fill="${BP_TEXT_DIM}">${dimLabel}</text>
-</g>`;
+function roomColor(type: string): string {
+  return ROOM_COLORS[type] || LINE;
 }
 
-function drawDoor(x: number, y: number, horizontal: boolean): string {
-  const w = horizontal ? DOOR_W * SCALE / 4 : DOOR_H * SCALE / 4;
-  const h = horizontal ? DOOR_H * SCALE / 4 : DOOR_W * SCALE / 4;
-  const arcR = Math.max(w, h) * 1.2;
+function dimLine(x1: number, y1: number, x2: number, y2: number, label: string, offset: number, horizontal: boolean): string {
+  const extLen = 6;
+  const tickLen = 3;
+  let svg = "";
+
   if (horizontal) {
-    return `<g class="door">
-  <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${BP_ACCENT}" stroke-width="1"/>
-  <path d="M ${x - w / 2} ${y + h / 2} A ${arcR} ${arcR} 0 0 0 ${x + w / 2} ${y + h / 2}" fill="none" stroke="${BP_ACCENT}" stroke-width="0.7" stroke-dasharray="2 1" opacity="0.6"/>
-</g>`;
+    const ey = y1 + offset;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x1}" y2="${ey}" stroke="${DIM_COLOR}" stroke-width="0.4" opacity="0.5"/>`;
+    svg += `<line x1="${x2}" y1="${y2}" x2="${x2}" y2="${ey}" stroke="${DIM_COLOR}" stroke-width="0.4" opacity="0.5"/>`;
+    svg += `<line x1="${x1}" y1="${ey}" x2="${x2}" y2="${ey}" stroke="${DIM_COLOR}" stroke-width="0.5" opacity="0.7"/>`;
+    svg += `<line x1="${x1}" y1="${ey - tickLen}" x2="${x1}" y2="${ey + tickLen}" stroke="${DIM_COLOR}" stroke-width="0.5" opacity="0.7"/>`;
+    svg += `<line x1="${x2}" y1="${ey - tickLen}" x2="${x2}" y2="${ey + tickLen}" stroke="${DIM_COLOR}" stroke-width="0.5" opacity="0.7"/>`;
+    svg += `<text x="${(x1 + x2) / 2}" y="${ey - 3}" text-anchor="middle" font-size="7" fill="${DIM_COLOR}" opacity="0.8">${esc(label)}</text>`;
+  } else {
+    const ex = x1 + offset;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${ex}" y2="${y1}" stroke="${DIM_COLOR}" stroke-width="0.4" opacity="0.5"/>`;
+    svg += `<line x1="${x2}" y1="${y2}" x2="${ex}" y2="${y2}" stroke="${DIM_COLOR}" stroke-width="0.4" opacity="0.5"/>`;
+    svg += `<line x1="${ex}" y1="${y1}" x2="${ex}" y2="${y2}" stroke="${DIM_COLOR}" stroke-width="0.5" opacity="0.7"/>`;
+    svg += `<line x1="${ex - tickLen}" y1="${y1}" x2="${ex + tickLen}" y2="${y1}" stroke="${DIM_COLOR}" stroke-width="0.5" opacity="0.7"/>`;
+    svg += `<line x1="${ex - tickLen}" y1="${y2}" x2="${ex + tickLen}" y2="${y2}" stroke="${DIM_COLOR}" stroke-width="0.5" opacity="0.7"/>`;
+    svg += `<text x="${ex + 4}" y="${(y1 + y2) / 2 + 3}" font-size="7" fill="${DIM_COLOR}" opacity="0.8">${esc(label)}</text>`;
   }
-  return `<g class="door">
-  <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${BP_ACCENT}" stroke-width="1"/>
-  <path d="M ${x + w / 2} ${y - h / 2} A ${arcR} ${arcR} 0 0 1 ${x + w / 2} ${y + h / 2}" fill="none" stroke="${BP_ACCENT}" stroke-width="0.7" stroke-dasharray="2 1" opacity="0.6"/>
+  return svg;
+}
+
+function drawWallRect(x: number, y: number, w: number, h: number, color: string, thickness: number): string {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${color}" stroke-width="${thickness}"/>`;
+}
+
+function drawRoom(room: SVGRoom, ox: number, oy: number, isCorridorRoom: boolean): string {
+  const x = ox + room.x * S;
+  const y = oy + room.y * S;
+  const w = room.width * S;
+  const h = room.height * S;
+  const col = roomColor(room.type);
+  const sw = isCorridorRoom ? 0.8 : WALL_INNER;
+
+  let hatch = "";
+  if (room.type === "bathroom") {
+    hatch = `<pattern id="hatch-${esc(room.id)}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="4" stroke="${HATCH_COLOR}" stroke-width="0.6"/>
+    </pattern>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#hatch-${esc(room.id)})" opacity="0.4"/>`;
+  } else if (room.type === "kitchen") {
+    hatch = `<pattern id="hatch-${esc(room.id)}" width="5" height="5" patternUnits="userSpaceOnUse">
+      <circle cx="2.5" cy="2.5" r="0.8" fill="${HATCH_COLOR}" opacity="0.5"/>
+    </pattern>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#hatch-${esc(room.id)})" opacity="0.35"/>`;
+  } else if (room.type === "staircase") {
+    const steps = Math.floor(h / 3);
+    let stairLines = "";
+    for (let i = 1; i < steps; i++) {
+      const sy = y + (i * h) / steps;
+      stairLines += `<line x1="${x + 2}" y1="${sy}" x2="${x + w - 2}" y2="${sy}" stroke="${LINE_DIM}" stroke-width="0.5" opacity="0.5"/>`;
+    }
+    stairLines += `<line x1="${x + w / 2}" y1="${y + 2}" x2="${x + w / 2}" y2="${y + h - 2}" stroke="${LINE_DIM}" stroke-width="0.3" opacity="0.4"/>`;
+    const arrowY = y + 4;
+    stairLines += `<polygon points="${x + w / 2 - 3},${arrowY + 4} ${x + w / 2 + 3},${arrowY + 4} ${x + w / 2},${arrowY}" fill="${LINE_DIM}" opacity="0.5"/>`;
+    hatch = stairLines;
+  } else if (room.type === "elevator") {
+    hatch = `<line x1="${x + 3}" y1="${y + 3}" x2="${x + w - 3}" y2="${y + h - 3}" stroke="${LINE_DIM}" stroke-width="0.5" opacity="0.4"/>
+    <line x1="${x + w - 3}" y1="${y + 3}" x2="${x + 3}" y2="${y + h - 3}" stroke="${LINE_DIM}" stroke-width="0.5" opacity="0.4"/>
+    <rect x="${x + w / 2 - 4}" y="${y + h / 2 - 5}" width="8" height="10" fill="none" stroke="${LINE_DIM}" stroke-width="0.6" opacity="0.5"/>`;
+  }
+
+  const fontSize = Math.min(w, h) > 40 ? 8 : 7;
+  const label = room.name.length > 14 ? room.name.slice(0, 13) + "..." : room.name;
+  const dimTxt = `${room.width.toFixed(0)}'x${room.height.toFixed(0)}'`;
+
+  let corridorFill = "";
+  if (isCorridorRoom) {
+    const stepSize = 3;
+    const numDots = Math.floor(w / (stepSize * 2));
+    let centerLine = `<line x1="${x + 4}" y1="${y + h / 2}" x2="${x + w - 4}" y2="${y + h / 2}" stroke="${LINE_DIM}" stroke-width="0.3" stroke-dasharray="3 5" opacity="0.4"/>`;
+    corridorFill = centerLine;
+  }
+
+  return `<g data-room-id="${esc(room.id)}" data-room-type="${esc(room.type)}">
+  ${drawWallRect(x, y, w, h, col, sw)}
+  ${hatch}
+  ${corridorFill}
+  <text x="${x + w / 2}" y="${y + h / 2 - 2}" text-anchor="middle" font-size="${fontSize}" fill="${TXT_BRIGHT}" opacity="0.85" font-weight="500">${esc(label)}</text>
+  <text x="${x + w / 2}" y="${y + h / 2 + 8}" text-anchor="middle" font-size="6" fill="${TXT_DIM}">${dimTxt}</text>
 </g>`;
 }
 
-function drawWindow(x: number, y: number, horizontal: boolean): string {
+function drawDoorArc(x: number, y: number, facing: "up" | "down" | "left" | "right"): string {
+  const r = 8;
+  const gap = 10;
+  let svg = "";
+
+  if (facing === "down") {
+    svg += `<line x1="${x - gap / 2}" y1="${y}" x2="${x + gap / 2}" y2="${y}" stroke="${BG}" stroke-width="3"/>`;
+    svg += `<line x1="${x - gap / 2}" y1="${y}" x2="${x + gap / 2}" y2="${y}" stroke="${LINE_ACCENT}" stroke-width="1"/>`;
+    svg += `<path d="M ${x - gap / 2} ${y} A ${r} ${r} 0 0 1 ${x + gap / 2} ${y}" fill="none" stroke="${LINE_ACCENT}" stroke-width="0.6" stroke-dasharray="2 1.5" opacity="0.7" transform="scale(1,-1) translate(0,${-2 * y})"/>`;
+  } else if (facing === "up") {
+    svg += `<line x1="${x - gap / 2}" y1="${y}" x2="${x + gap / 2}" y2="${y}" stroke="${BG}" stroke-width="3"/>`;
+    svg += `<line x1="${x - gap / 2}" y1="${y}" x2="${x + gap / 2}" y2="${y}" stroke="${LINE_ACCENT}" stroke-width="1"/>`;
+    svg += `<path d="M ${x - gap / 2} ${y} A ${r} ${r} 0 0 1 ${x + gap / 2} ${y}" fill="none" stroke="${LINE_ACCENT}" stroke-width="0.6" stroke-dasharray="2 1.5" opacity="0.7"/>`;
+  } else if (facing === "right") {
+    svg += `<line x1="${x}" y1="${y - gap / 2}" x2="${x}" y2="${y + gap / 2}" stroke="${BG}" stroke-width="3"/>`;
+    svg += `<line x1="${x}" y1="${y - gap / 2}" x2="${x}" y2="${y + gap / 2}" stroke="${LINE_ACCENT}" stroke-width="1"/>`;
+    svg += `<path d="M ${x} ${y - gap / 2} A ${r} ${r} 0 0 1 ${x} ${y + gap / 2}" fill="none" stroke="${LINE_ACCENT}" stroke-width="0.6" stroke-dasharray="2 1.5" opacity="0.7"/>`;
+  } else {
+    svg += `<line x1="${x}" y1="${y - gap / 2}" x2="${x}" y2="${y + gap / 2}" stroke="${BG}" stroke-width="3"/>`;
+    svg += `<line x1="${x}" y1="${y - gap / 2}" x2="${x}" y2="${y + gap / 2}" stroke="${LINE_ACCENT}" stroke-width="1"/>`;
+    svg += `<path d="M ${x} ${y - gap / 2} A ${r} ${r} 0 0 0 ${x} ${y + gap / 2}" fill="none" stroke="${LINE_ACCENT}" stroke-width="0.6" stroke-dasharray="2 1.5" opacity="0.7"/>`;
+  }
+  return svg;
+}
+
+function drawWindowMark(x: number, y: number, horizontal: boolean): string {
+  const len = 10;
   if (horizontal) {
-    return `<g class="window">
-  <line x1="${x - WINDOW_W}" y1="${y}" x2="${x + WINDOW_W}" y2="${y}" stroke="${BP_ACCENT}" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
-  <line x1="${x - WINDOW_W + 2}" y1="${y - 1.5}" x2="${x + WINDOW_W - 2}" y2="${y - 1.5}" stroke="${BP_ACCENT}" stroke-width="0.5" opacity="0.4"/>
-  <line x1="${x - WINDOW_W + 2}" y1="${y + 1.5}" x2="${x + WINDOW_W - 2}" y2="${y + 1.5}" stroke="${BP_ACCENT}" stroke-width="0.5" opacity="0.4"/>
-</g>`;
+    return `<g>
+      <line x1="${x - len / 2}" y1="${y}" x2="${x + len / 2}" y2="${y}" stroke="${BG}" stroke-width="4"/>
+      <line x1="${x - len / 2}" y1="${y - 1.5}" x2="${x + len / 2}" y2="${y - 1.5}" stroke="${LINE_ACCENT}" stroke-width="0.8" opacity="0.8"/>
+      <line x1="${x - len / 2}" y1="${y + 1.5}" x2="${x + len / 2}" y2="${y + 1.5}" stroke="${LINE_ACCENT}" stroke-width="0.8" opacity="0.8"/>
+      <line x1="${x - len / 2}" y1="${y}" x2="${x + len / 2}" y2="${y}" stroke="${LINE_ACCENT}" stroke-width="0.4" opacity="0.5"/>
+    </g>`;
   }
-  return `<g class="window">
-  <line x1="${x}" y1="${y - WINDOW_W}" x2="${x}" y2="${y + WINDOW_W}" stroke="${BP_ACCENT}" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
-  <line x1="${x - 1.5}" y1="${y - WINDOW_W + 2}" x2="${x - 1.5}" y2="${y + WINDOW_W - 2}" stroke="${BP_ACCENT}" stroke-width="0.5" opacity="0.4"/>
-  <line x1="${x + 1.5}" y1="${y - WINDOW_W + 2}" x2="${x + 1.5}" y2="${y + WINDOW_W - 2}" stroke="${BP_ACCENT}" stroke-width="0.5" opacity="0.4"/>
-</g>`;
-}
-
-function drawCorridor(corridorRoom: SVGRoom, ox: number, oy: number): string {
-  const x = ox + corridorRoom.x * SCALE;
-  const y = oy + corridorRoom.y * SCALE;
-  const w = corridorRoom.width * SCALE;
-  const h = corridorRoom.height * SCALE;
-
-  return `<g class="corridor">
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${BP_LINE_LIGHT}" stroke-width="0.8" stroke-dasharray="4 2"/>
-  <line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" stroke="${BP_LINE_LIGHT}" stroke-width="0.3" stroke-dasharray="2 4" opacity="0.5"/>
-  <text x="${x + w / 2}" y="${y + h / 2 + 3}" text-anchor="middle" font-size="9" fill="${BP_TEXT_DIM}" font-weight="500" letter-spacing="2">CORRIDOR</text>
-</g>`;
+  return `<g>
+    <line x1="${x}" y1="${y - len / 2}" x2="${x}" y2="${y + len / 2}" stroke="${BG}" stroke-width="4"/>
+    <line x1="${x - 1.5}" y1="${y - len / 2}" x2="${x - 1.5}" y2="${y + len / 2}" stroke="${LINE_ACCENT}" stroke-width="0.8" opacity="0.8"/>
+    <line x1="${x + 1.5}" y1="${y - len / 2}" x2="${x + 1.5}" y2="${y + len / 2}" stroke="${LINE_ACCENT}" stroke-width="0.8" opacity="0.8"/>
+    <line x1="${x}" y1="${y - len / 2}" x2="${x}" y2="${y + len / 2}" stroke="${LINE_ACCENT}" stroke-width="0.4" opacity="0.5"/>
+  </g>`;
 }
 
 function drawDoorsForRoom(room: SVGRoom, corridorY: number, corridorH: number, ox: number, oy: number): string {
-  if (room.type === "corridor") return "";
-  let parts = "";
-  const rx = ox + room.x * SCALE;
-  const ry = oy + room.y * SCALE;
-  const rw = room.width * SCALE;
-  const rh = room.height * SCALE;
-
-  const corridorTop = oy + corridorY * SCALE;
-  const corridorBottom = corridorTop + corridorH * SCALE;
-
-  if (ry + rh <= corridorTop + 2) {
-    parts += drawDoor(rx + rw / 2, ry + rh, true);
-  } else if (ry >= corridorBottom - 2) {
-    parts += drawDoor(rx + rw / 2, ry, true);
-  }
-  return parts;
-}
-
-function drawWindowsForRoom(room: SVGRoom, buildingWidth: number, buildingDepth: number, ox: number, oy: number): string {
   if (room.type === "corridor" || room.type === "elevator" || room.type === "staircase") return "";
   let parts = "";
-  const rx = ox + room.x * SCALE;
-  const ry = oy + room.y * SCALE;
-  const rw = room.width * SCALE;
-  const rh = room.height * SCALE;
+  const rx = ox + room.x * S;
+  const ry = oy + room.y * S;
+  const rw = room.width * S;
+  const rh = room.height * S;
 
-  if (room.y <= 0.5) {
-    parts += drawWindow(rx + rw * 0.35, ry, true);
-    if (rw > 50) parts += drawWindow(rx + rw * 0.65, ry, true);
-  }
-  if (room.y + room.height >= buildingDepth - 0.5) {
-    parts += drawWindow(rx + rw * 0.35, ry + rh, true);
-    if (rw > 50) parts += drawWindow(rx + rw * 0.65, ry + rh, true);
-  }
-  if (room.x <= 0.5) {
-    parts += drawWindow(rx, ry + rh * 0.5, false);
-  }
-  if (room.x + room.width >= buildingWidth - 0.5) {
-    parts += drawWindow(rx + rw, ry + rh * 0.5, false);
+  const cTop = oy + corridorY * S;
+  const cBot = cTop + corridorH * S;
+
+  if (Math.abs(ry + rh - cTop) < 4) {
+    parts += drawDoorArc(rx + rw * 0.4, ry + rh, "down");
+  } else if (Math.abs(ry - cBot) < 4) {
+    parts += drawDoorArc(rx + rw * 0.4, ry, "up");
   }
   return parts;
 }
 
-function drawWaterTank(x: number, y: number, tank: { id: string; capacity_litres: number; location: string }): string {
-  const w = 50;
-  const h = 35;
-  return `<g class="water-tank">
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${BP_LINE}" stroke-width="1.5" rx="2"/>
-  <rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="none" stroke="${BP_LINE}" stroke-width="0.5" rx="1" opacity="0.4"/>
-  <text x="${x + w / 2}" y="${y + 12}" text-anchor="middle" font-size="8" font-weight="600" fill="${BP_ACCENT}">TANK</text>
-  <text x="${x + w / 2}" y="${y + 22}" text-anchor="middle" font-size="7" fill="${BP_TEXT}">${tank.capacity_litres}L</text>
-  <text x="${x + w / 2}" y="${y + 31}" text-anchor="middle" font-size="7" fill="${BP_TEXT_DIM}">${tank.location}</text>
-</g>`;
+function drawWindowsForRoom(room: SVGRoom, bw: number, bd: number, ox: number, oy: number): string {
+  if (room.type === "corridor" || room.type === "elevator" || room.type === "staircase") return "";
+  let parts = "";
+  const rx = ox + room.x * S;
+  const ry = oy + room.y * S;
+  const rw = room.width * S;
+  const rh = room.height * S;
+
+  if (room.y <= 0.5) {
+    parts += drawWindowMark(rx + rw * 0.4, ry, true);
+    if (rw > 50) parts += drawWindowMark(rx + rw * 0.7, ry, true);
+  }
+  if (room.y + room.height >= bd - 0.5) {
+    parts += drawWindowMark(rx + rw * 0.4, ry + rh, true);
+    if (rw > 50) parts += drawWindowMark(rx + rw * 0.7, ry + rh, true);
+  }
+  if (room.x <= 0.5) {
+    parts += drawWindowMark(rx, ry + rh * 0.5, false);
+  }
+  if (room.x + room.width >= bw - 0.5) {
+    parts += drawWindowMark(rx + rw, ry + rh * 0.5, false);
+  }
+  return parts;
+}
+
+function drawPlumbingShaft(ox: number, oy: number, floorH: number, shaftX: number): string {
+  const sx = ox + shaftX * S;
+  const sw = 3 * S;
+  return `<g opacity="0.4">
+    <rect x="${sx}" y="${oy}" width="${sw}" height="${floorH}" fill="none" stroke="#4a90b0" stroke-width="0.6" stroke-dasharray="3 2"/>
+    <text x="${sx + sw / 2}" y="${oy + 8}" text-anchor="middle" font-size="5" fill="#4a90b0" opacity="0.7">PLMB</text>
+    <line x1="${sx + sw / 2}" y1="${oy + 10}" x2="${sx + sw / 2}" y2="${oy + floorH - 2}" stroke="#4a90b0" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.5"/>
+  </g>`;
+}
+
+function drawElectricalRiser(ox: number, oy: number, floorH: number, riserX: number): string {
+  const rx = ox + riserX * S;
+  return `<g opacity="0.4">
+    <rect x="${rx - 4}" y="${oy}" width="8" height="${floorH}" fill="none" stroke="#c0a040" stroke-width="0.5" stroke-dasharray="2 3"/>
+    <text x="${rx}" y="${oy + 8}" text-anchor="middle" font-size="5" fill="#c0a040" opacity="0.7">ELEC</text>
+    <line x1="${rx}" y1="${oy + 10}" x2="${rx}" y2="${oy + floorH - 2}" stroke="#c0a040" stroke-width="0.4" stroke-dasharray="4 3" opacity="0.4"/>
+  </g>`;
 }
 
 function drawWaterConnections(blueprint: SVGBlueprint, ox: number, oy: number, totalW: number, totalH: number): string {
@@ -206,33 +278,23 @@ function drawWaterConnections(blueprint: SVGBlueprint, ox: number, oy: number, t
   const lines = blueprint.water_lines;
   if (!lines || lines.length === 0) return "";
 
-  const mainX = ox + totalW + 20;
+  const mainX = ox + totalW + 25;
   const pipeStartY = oy + 20;
   const pipeEndY = oy + totalH - 20;
 
-  svg += `<line x1="${mainX}" y1="${pipeStartY}" x2="${mainX}" y2="${pipeEndY}" stroke="${BP_LINE}" stroke-width="3" stroke-dasharray="6 3"/>`;
-  svg += `<text x="${mainX + 8}" y="${pipeStartY + 10}" font-size="8" fill="${BP_ACCENT}" font-weight="600">MAIN SUPPLY</text>`;
+  svg += `<line x1="${mainX}" y1="${pipeStartY}" x2="${mainX}" y2="${pipeEndY}" stroke="#4a90b0" stroke-width="2" stroke-dasharray="6 3"/>`;
+  svg += `<text x="${mainX + 6}" y="${pipeStartY + 8}" font-size="7" fill="#6ab0d0" font-weight="500" letter-spacing="1">SUPPLY</text>`;
 
-  const floorCount = blueprint.floors.length;
-  for (let i = 0; i < floorCount; i++) {
-    const branchY = pipeStartY + (i + 0.5) * ((pipeEndY - pipeStartY) / floorCount);
-    svg += `<line x1="${ox + totalW}" y1="${branchY}" x2="${mainX}" y2="${branchY}" stroke="${BP_LINE_LIGHT}" stroke-width="2" stroke-dasharray="4 2"/>`;
-    svg += `<circle cx="${mainX}" cy="${branchY}" r="3" fill="none" stroke="${BP_ACCENT}" stroke-width="1.5"/>`;
-    svg += `<circle cx="${mainX}" cy="${branchY}" r="1" fill="${BP_ACCENT}"/>`;
-    svg += `<text x="${mainX + 8}" y="${branchY + 3}" font-size="7" fill="${BP_TEXT_DIM}">Floor ${i}</text>`;
-
-    const floor = blueprint.floors[i];
-    const baths = floor.rooms.filter((r) => r.type === "bathroom");
-    const kitchens = floor.rooms.filter((r) => r.type === "kitchen");
-    [...baths, ...kitchens].forEach((room) => {
-      const roomCx = ox + (room.x + room.width / 2) * SCALE;
-      const roomCy = oy + i * (totalH / floorCount) + (room.y + room.height / 2) * SCALE / floorCount;
-      svg += `<line x1="${roomCx}" y1="${branchY}" x2="${roomCx}" y2="${roomCy}" stroke="${BP_LINE_LIGHT}" stroke-width="1" stroke-dasharray="3 2" opacity="0.6"/>`;
-    });
+  const fc = blueprint.floors.length;
+  for (let i = 0; i < fc; i++) {
+    const brY = pipeStartY + (i + 0.5) * ((pipeEndY - pipeStartY) / fc);
+    svg += `<line x1="${ox + totalW}" y1="${brY}" x2="${mainX}" y2="${brY}" stroke="#3a7890" stroke-width="1.2" stroke-dasharray="4 2"/>`;
+    svg += `<circle cx="${mainX}" cy="${brY}" r="2.5" fill="none" stroke="#6ab0d0" stroke-width="1"/>`;
+    svg += `<circle cx="${mainX}" cy="${brY}" r="1" fill="#6ab0d0"/>`;
+    svg += `<text x="${mainX + 6}" y="${brY + 3}" font-size="6" fill="${TXT_DIM}">F${i}</text>`;
   }
-
-  svg += `<line x1="${mainX}" y1="${pipeEndY}" x2="${mainX}" y2="${pipeEndY + 20}" stroke="#c0392b" stroke-width="2"/>`;
-  svg += `<text x="${mainX + 8}" y="${pipeEndY + 15}" font-size="7" fill="#e74c3c">DRAINAGE</text>`;
+  svg += `<line x1="${mainX}" y1="${pipeEndY}" x2="${mainX}" y2="${pipeEndY + 15}" stroke="#904040" stroke-width="1.5"/>`;
+  svg += `<text x="${mainX + 6}" y="${pipeEndY + 12}" font-size="6" fill="#c06060">DRAIN</text>`;
 
   return svg;
 }
@@ -242,60 +304,65 @@ function drawElectricalConnections(blueprint: SVGBlueprint, ox: number, oy: numb
   const lines = blueprint.electrical_lines;
   if (!lines || lines.length === 0) return "";
 
-  const mainX = ox - 30;
+  const mainX = ox - 25;
   const dbY = oy + 15;
 
-  svg += `<rect x="${mainX - 15}" y="${dbY}" width="30" height="25" fill="${BP_BG}" stroke="#f39c12" stroke-width="1.5" rx="2"/>`;
-  svg += `<rect x="${mainX - 13}" y="${dbY + 2}" width="26" height="21" fill="none" stroke="#f39c12" stroke-width="0.5" rx="1" opacity="0.4"/>`;
-  svg += `<text x="${mainX}" y="${dbY + 10}" text-anchor="middle" font-size="7" font-weight="600" fill="#f1c40f">DB</text>`;
-  svg += `<text x="${mainX}" y="${dbY + 20}" text-anchor="middle" font-size="6" fill="#e67e22">MAIN</text>`;
+  svg += `<rect x="${mainX - 10}" y="${dbY}" width="20" height="18" fill="${BG}" stroke="#c0a040" stroke-width="1" rx="1"/>`;
+  svg += `<text x="${mainX}" y="${dbY + 8}" text-anchor="middle" font-size="6" font-weight="500" fill="#d0b050">DB</text>`;
+  svg += `<text x="${mainX}" y="${dbY + 14}" text-anchor="middle" font-size="5" fill="#b09030">MAIN</text>`;
 
-  const floorCount = blueprint.floors.length;
-  for (let i = 0; i < floorCount; i++) {
-    const branchY = oy + (i + 0.5) * (totalH / floorCount);
-    svg += `<line x1="${mainX}" y1="${dbY + 25}" x2="${mainX}" y2="${branchY}" stroke="#f39c12" stroke-width="2"/>`;
-    svg += `<line x1="${mainX}" y1="${branchY}" x2="${ox}" y2="${branchY}" stroke="#e67e22" stroke-width="1.5" stroke-dasharray="5 3"/>`;
-    svg += `<circle cx="${mainX}" cy="${branchY}" r="3" fill="none" stroke="#f1c40f" stroke-width="1.5"/>`;
-    svg += `<circle cx="${mainX}" cy="${branchY}" r="1" fill="#f1c40f"/>`;
-    svg += `<text x="${mainX - 20}" y="${branchY + 3}" font-size="7" fill="#e67e22">F${i}</text>`;
+  const fc = blueprint.floors.length;
+  for (let i = 0; i < fc; i++) {
+    const brY = oy + (i + 0.5) * (totalH / fc);
+    svg += `<line x1="${mainX}" y1="${dbY + 18}" x2="${mainX}" y2="${brY}" stroke="#c0a040" stroke-width="1.2"/>`;
+    svg += `<line x1="${mainX}" y1="${brY}" x2="${ox}" y2="${brY}" stroke="#b09030" stroke-width="1" stroke-dasharray="4 3"/>`;
+    svg += `<circle cx="${mainX}" cy="${brY}" r="2.5" fill="none" stroke="#d0b050" stroke-width="1"/>`;
+    svg += `<text x="${mainX - 14}" y="${brY + 3}" font-size="6" fill="#b09030">F${i}</text>`;
   }
-
   return svg;
 }
 
 function drawParkingLevel(ox: number, oy: number, width: number): string {
-  const w = width * SCALE;
-  const h = 60;
-  const slotW = 30;
-  const slotH = 45;
-  const slots = Math.floor(w / (slotW + 5));
+  const w = width * S;
+  const h = 50;
+  const slotW = 25;
+  const slots = Math.floor(w / (slotW + 4));
 
-  let svg = `<g class="parking">
-  <rect x="${ox}" y="${oy}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${BP_LINE}" stroke-width="1.5" rx="0"/>
-  <text x="${ox + 10}" y="${oy + 14}" font-size="10" font-weight="600" fill="${BP_ACCENT}" letter-spacing="2">PARKING</text>`;
-
-  for (let i = 0; i < Math.min(slots, 8); i++) {
-    const sx = ox + 10 + i * (slotW + 5);
-    const sy = oy + 20;
-    svg += `<rect x="${sx}" y="${sy}" width="${slotW}" height="${slotH - 5}" fill="none" stroke="${BP_LINE_LIGHT}" stroke-width="0.8" rx="0"/>`;
-    svg += `<text x="${sx + slotW / 2}" y="${sy + slotH / 2}" text-anchor="middle" font-size="8" fill="${BP_TEXT_DIM}">P${i + 1}</text>`;
+  let svg = `<g>
+  ${drawWallRect(ox, oy, w, h, LINE, WALL)}
+  <text x="${ox + 8}" y="${oy + 12}" font-size="8" font-weight="500" fill="${TXT}" letter-spacing="2">PARKING</text>`;
+  for (let i = 0; i < Math.min(slots, 10); i++) {
+    const sx = ox + 8 + i * (slotW + 4);
+    svg += `<rect x="${sx}" y="${oy + 18}" width="${slotW}" height="${h - 26}" fill="none" stroke="${LINE_DIM}" stroke-width="0.6"/>`;
+    svg += `<text x="${sx + slotW / 2}" y="${oy + h / 2 + 6}" text-anchor="middle" font-size="6" fill="${TXT_DIM}">P${i + 1}</text>`;
   }
   svg += `</g>`;
   return svg;
 }
 
 function drawTerrace(ox: number, oy: number, width: number, terrace: NonNullable<SVGBlueprint["terrace"]>): string {
-  const w = width * SCALE;
-  const h = 50;
-  let svg = `<g class="terrace">
-  <rect x="${ox}" y="${oy}" width="${w}" height="${h}" fill="${BP_BG}" stroke="${BP_LINE}" stroke-width="1.5" stroke-dasharray="6 3" rx="0"/>
-  <line x1="${ox}" y1="${oy}" x2="${ox + w}" y2="${oy + h}" stroke="${BP_LINE_LIGHT}" stroke-width="0.3" opacity="0.3"/>
-  <line x1="${ox + w}" y1="${oy}" x2="${ox}" y2="${oy + h}" stroke="${BP_LINE_LIGHT}" stroke-width="0.3" opacity="0.3"/>
-  <text x="${ox + w / 2}" y="${oy + 18}" text-anchor="middle" font-size="11" font-weight="600" fill="${BP_ACCENT}" letter-spacing="2">TERRACE</text>
-  <text x="${ox + w / 2}" y="${oy + 32}" text-anchor="middle" font-size="8" fill="${BP_TEXT}">${terrace.area_sqft} sqft</text>
-  <text x="${ox + w / 2}" y="${oy + 43}" text-anchor="middle" font-size="7" fill="${BP_TEXT_DIM}">Railing: ${terrace.has_railing ? "Yes" : "No"} | WP: ${terrace.water_proofing ? "Yes" : "No"}</text>
+  const w = width * S;
+  const h = 42;
+  return `<g>
+  ${drawWallRect(ox, oy, w, h, LINE, WALL)}
+  <line x1="${ox}" y1="${oy}" x2="${ox + w}" y2="${oy + h}" stroke="${LINE_DIM}" stroke-width="0.3" opacity="0.2"/>
+  <line x1="${ox + w}" y1="${oy}" x2="${ox}" y2="${oy + h}" stroke="${LINE_DIM}" stroke-width="0.3" opacity="0.2"/>
+  <text x="${ox + w / 2}" y="${oy + 15}" text-anchor="middle" font-size="9" font-weight="500" fill="${TXT}" letter-spacing="2">TERRACE</text>
+  <text x="${ox + w / 2}" y="${oy + 27}" text-anchor="middle" font-size="7" fill="${TXT_DIM}">${terrace.area_sqft} sqft</text>
+  <text x="${ox + w / 2}" y="${oy + 36}" text-anchor="middle" font-size="6" fill="${TXT_DIM}">Railing: ${terrace.has_railing ? "Yes" : "No"} | WP: ${terrace.water_proofing ? "Yes" : "No"}</text>
 </g>`;
-  return svg;
+}
+
+function drawWaterTank(x: number, y: number, tank: { id: string; capacity_litres: number; location: string }): string {
+  const w = 45;
+  const h = 30;
+  return `<g>
+  ${drawWallRect(x, y, w, h, LINE, 1.2)}
+  <rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="none" stroke="${LINE_DIM}" stroke-width="0.4" rx="1"/>
+  <text x="${x + w / 2}" y="${y + 10}" text-anchor="middle" font-size="7" font-weight="500" fill="${TXT}">TANK</text>
+  <text x="${x + w / 2}" y="${y + 19}" text-anchor="middle" font-size="6" fill="${TXT_DIM}">${tank.capacity_litres}L</text>
+  <text x="${x + w / 2}" y="${y + 27}" text-anchor="middle" font-size="5" fill="${TXT_DIM}">${tank.location}</text>
+</g>`;
 }
 
 function computeBuildingDims(blueprint: SVGBlueprint): { width: number; depth: number } {
@@ -317,60 +384,53 @@ export function blueprintToSVG(
   selectedFlatIdx: number = -1
 ): string {
   const dims = computeBuildingDims(blueprint);
-  const buildingW = dims.width;
-  const buildingD = dims.depth;
-  const floorH = buildingD * SCALE;
+  const bW = dims.width;
+  const bD = dims.depth;
+  const floorH = bD * S;
 
   const floorsToRender =
     selectedFloor >= 0
       ? blueprint.floors.filter((f) => f.floor === selectedFloor)
       : blueprint.floors;
 
-  let extraRight = 0;
-  let extraLeft = 0;
-  let extraBottom = 0;
-
-  if (filter === "water_connections" || filter === "all") extraRight = 80;
-  if (filter === "electrical_connections" || filter === "all") extraLeft = 60;
-  if (filter === "parking" || filter === "all") extraBottom += 80;
-  if (filter === "terrace" || filter === "all") extraBottom += 70;
-  if (filter === "water_tanks" || filter === "all") extraBottom += 50;
+  let extraR = 0, extraL = 0, extraB = 0;
+  if (filter === "water_connections" || filter === "all") extraR = 70;
+  if (filter === "electrical_connections" || filter === "all") extraL = 50;
+  if (filter === "parking" || filter === "all") extraB += 70;
+  if (filter === "terrace" || filter === "all") extraB += 55;
+  if (filter === "water_tanks" || filter === "all") extraB += 45;
 
   const totalFloorH = floorsToRender.length * (floorH + FLOOR_GAP);
-  const svgW = PADDING * 2 + buildingW * SCALE + extraRight + extraLeft;
-  const svgH = PADDING * 2 + totalFloorH + extraBottom + 30;
+  const svgW = PAD * 2 + bW * S + extraR + extraL;
+  const svgH = PAD * 2 + totalFloorH + extraB + 40;
+  const baseOx = PAD + extraL;
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="background:${BP_BG};font-family:'Inter',system-ui,sans-serif">`;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="background:${BG};font-family:'Courier New',monospace">`;
 
   svg += `<defs>
-  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="${BP_GRID}" stroke-width="0.5"/>
-  </pattern>
-  <pattern id="hatch-bath" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <line x1="0" y1="0" x2="0" y2="6" stroke="${BP_LINE_LIGHT}" stroke-width="0.5"/>
-  </pattern>
-  <pattern id="hatch-kitchen" width="8" height="8" patternUnits="userSpaceOnUse">
-    <circle cx="4" cy="4" r="1" fill="${BP_LINE_LIGHT}" opacity="0.5"/>
+  <pattern id="bp-grid" width="14" height="14" patternUnits="userSpaceOnUse">
+    <path d="M 14 0 L 0 0 0 14" fill="none" stroke="${GRID_COLOR}" stroke-width="0.5"/>
   </pattern>
 </defs>
-<rect width="100%" height="100%" fill="url(#grid)"/>`;
+<rect width="100%" height="100%" fill="url(#bp-grid)"/>`;
 
-  const baseOx = PADDING + extraLeft;
+  svg += `<text x="${svgW / 2}" y="${22}" text-anchor="middle" font-size="11" font-weight="700" fill="${TXT}" letter-spacing="3" opacity="0.6">ARCHITECTURAL FLOOR PLAN</text>`;
+  svg += `<line x1="${PAD}" y1="${28}" x2="${svgW - PAD}" y2="${28}" stroke="${LINE_DIM}" stroke-width="0.5" opacity="0.3"/>`;
 
   floorsToRender.forEach((floor, fIdx) => {
-    const oy = PADDING + fIdx * (floorH + FLOOR_GAP);
+    const oy = PAD + 20 + fIdx * (floorH + FLOOR_GAP);
     const ox = baseOx;
 
-    svg += `<text x="${ox - 5}" y="${oy - 8}" font-size="13" font-weight="700" fill="${BP_ACCENT}" letter-spacing="1">${escapeXml(floor.label)}</text>`;
+    svg += `<text x="${ox - 5}" y="${oy - 12}" font-size="10" font-weight="700" fill="${TXT}" letter-spacing="2">${esc(floor.label.toUpperCase())}</text>`;
+    svg += `<line x1="${ox - 5}" y1="${oy - 8}" x2="${ox + 60}" y2="${oy - 8}" stroke="${LINE_DIM}" stroke-width="0.5" opacity="0.4"/>`;
 
-    svg += `<rect x="${ox - 2}" y="${oy - 2}" width="${buildingW * SCALE + 4}" height="${floorH + 4}" fill="none" stroke="${BP_LINE}" stroke-width="2" rx="0"/>`;
+    svg += drawWallRect(ox - 1, oy - 1, bW * S + 2, floorH + 2, LINE, WALL);
 
     const corridor = floor.rooms.find((r) => r.type === "corridor");
-    const corridorY = corridor ? corridor.y : buildingD / 2 - 1.5;
-    const corridorH = corridor ? corridor.height : 3;
+    const corridorY = corridor ? corridor.y : bD / 2 - 2.5;
+    const corridorH = corridor ? corridor.height : 5;
 
     let roomsToRender = floor.rooms;
-
     if (filter === "corridors") {
       roomsToRender = floor.rooms.filter((r) => r.type === "corridor");
     } else if (filter === "flats") {
@@ -379,36 +439,31 @@ export function blueprintToSVG(
       const flatIdx = selectedFlatIdx >= 0 ? selectedFlatIdx : 0;
       const flat = floor.flats[flatIdx];
       if (flat) {
-        const flatRoomIds = new Set(flat.rooms);
-        roomsToRender = floor.rooms.filter((r) => flatRoomIds.has(r.id));
+        const ids = new Set(flat.rooms);
+        roomsToRender = floor.rooms.filter((r) => ids.has(r.id));
       }
     } else if (filter === "parking") {
       roomsToRender = floor.rooms.filter((r) => r.type === "parking");
-    } else if (
-      filter === "water_connections" ||
-      filter === "electrical_connections" ||
-      filter === "water_tanks" ||
-      filter === "terrace"
-    ) {
-      roomsToRender = floor.rooms;
     }
 
     if (filter !== "parking" && filter !== "water_tanks" && filter !== "terrace") {
-      if (corridor && (filter === "all" || filter === "corridors" || filter === "floors" || filter === "flats")) {
-        svg += drawCorridor(corridor, ox, oy);
-      }
-
-      roomsToRender
-        .filter((r) => r.type !== "corridor")
-        .forEach((room) => {
-          svg += drawRoom(room, ox, oy);
-        });
+      roomsToRender.forEach((room) => {
+        svg += drawRoom(room, ox, oy, room.type === "corridor");
+      });
 
       if (filter === "all" || filter === "floors" || filter === "flats" || filter === "single_flat") {
         roomsToRender.forEach((room) => {
           svg += drawDoorsForRoom(room, corridorY, corridorH, ox, oy);
-          svg += drawWindowsForRoom(room, buildingW, buildingD, ox, oy);
+          svg += drawWindowsForRoom(room, bW, bD, ox, oy);
         });
+      }
+
+      const shaftX = bW * 0.15;
+      if (filter === "all" || filter === "water_connections") {
+        svg += drawPlumbingShaft(ox, oy, floorH, shaftX);
+      }
+      if (filter === "all" || filter === "electrical_connections") {
+        svg += drawElectricalRiser(ox, oy, floorH, bW * 0.85);
       }
 
       if (floor.flats && floor.flats.length > 0 && (filter === "all" || filter === "flats" || filter === "floors")) {
@@ -417,38 +472,49 @@ export function blueprintToSVG(
           if (flatRooms.length > 0) {
             const minX = Math.min(...flatRooms.map((r) => r.x));
             const maxX = Math.max(...flatRooms.map((r) => r.x + r.width));
-            svg += `<text x="${ox + (minX + (maxX - minX) / 2) * SCALE}" y="${oy + floorH + 15}" text-anchor="middle" font-size="9" font-weight="600" fill="${BP_ACCENT}">${escapeXml(flat.label)}</text>`;
+            const minY = Math.min(...flatRooms.map((r) => r.y));
+            const maxY = Math.max(...flatRooms.map((r) => r.y + r.height));
+            const fx = ox + minX * S;
+            const fy = oy + minY * S;
+            const fw = (maxX - minX) * S;
+            const fh = (maxY - minY) * S;
+            svg += `<rect x="${fx - 1}" y="${fy - 1}" width="${fw + 2}" height="${fh + 2}" fill="none" stroke="${LINE_ACCENT}" stroke-width="0.6" stroke-dasharray="4 3" opacity="0.35"/>`;
+            svg += `<text x="${fx + fw / 2}" y="${fy - 3}" text-anchor="middle" font-size="7" font-weight="600" fill="${LINE_ACCENT}" opacity="0.6">${esc(flat.label)}</text>`;
           }
         });
       }
+
+      svg += dimLine(ox, oy + floorH + 2, ox + bW * S, oy + floorH + 2, `${bW.toFixed(0)}'`, 15, true);
+      svg += dimLine(ox + bW * S + 2, oy, ox + bW * S + 2, oy + floorH, `${bD.toFixed(0)}'`, 20, false);
     }
   });
 
-  let bottomY = PADDING + floorsToRender.length * (floorH + FLOOR_GAP) + 10;
+  let bottomY = PAD + 20 + floorsToRender.length * (floorH + FLOOR_GAP) + 10;
   const totalH = floorsToRender.length * (floorH + FLOOR_GAP);
 
   if (filter === "water_connections" || filter === "all") {
-    svg += drawWaterConnections(blueprint, baseOx, PADDING, buildingW * SCALE, totalH);
+    svg += drawWaterConnections(blueprint, baseOx, PAD + 20, bW * S, totalH);
   }
   if (filter === "electrical_connections" || filter === "all") {
-    svg += drawElectricalConnections(blueprint, baseOx, PADDING, buildingW * SCALE, totalH);
+    svg += drawElectricalConnections(blueprint, baseOx, PAD + 20, bW * S, totalH);
   }
-
   if (filter === "parking" || filter === "all") {
-    svg += drawParkingLevel(baseOx, bottomY, buildingW);
-    bottomY += 80;
+    svg += drawParkingLevel(baseOx, bottomY, bW);
+    bottomY += 70;
   }
   if (filter === "terrace" || filter === "all") {
     if (blueprint.terrace) {
-      svg += drawTerrace(baseOx, bottomY, buildingW, blueprint.terrace);
-      bottomY += 70;
+      svg += drawTerrace(baseOx, bottomY, bW, blueprint.terrace);
+      bottomY += 55;
     }
   }
   if (filter === "water_tanks" || filter === "all") {
     blueprint.water_tanks.forEach((tank, i) => {
-      svg += drawWaterTank(baseOx + i * 65, bottomY, tank);
+      svg += drawWaterTank(baseOx + i * 55, bottomY, tank);
     });
   }
+
+  svg += `<text x="${svgW / 2}" y="${svgH - 8}" text-anchor="middle" font-size="6" fill="${TXT_DIM}" letter-spacing="1" opacity="0.5">STRUCTURA.AI - ARCHITECTURAL BLUEPRINT</text>`;
 
   svg += `</svg>`;
   return svg;
@@ -484,7 +550,7 @@ export function exportSVGAsPNG(svgString: string, filename: string = "blueprint.
   const url = URL.createObjectURL(blob);
 
   img.onload = () => {
-    ctx.fillStyle = BP_BG;
+    ctx.fillStyle = BG;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     URL.revokeObjectURL(url);

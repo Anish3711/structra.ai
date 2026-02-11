@@ -38,45 +38,65 @@ def _ai_generate_blueprint(client: OpenAI, input: ProjectInput) -> Optional[Blue
 
     area_per_floor = area
     side = math.sqrt(area_per_floor)
-    approx_width = round(side * 1.3, 1)
+    approx_width = round(side * 1.4, 1)
     approx_depth = round(area_per_floor / approx_width, 1)
 
-    prompt = f"""You are an expert architect designing a realistic {building_type} building floor plan.
+    corridor_width = 5
+    core_width = 8
+    core_depth = 10
+    flats_per_side = max(1, flat_cfg.flats_per_floor // 2)
+    remaining = flat_cfg.flats_per_floor - flats_per_side * 2
+    if remaining > 0:
+        flats_per_side_left = flats_per_side + remaining
+        flats_per_side_right = flats_per_side
+    else:
+        flats_per_side_left = flats_per_side
+        flats_per_side_right = flats_per_side
+
+    prompt = f"""You are an expert architect designing a realistic {building_type.value} building floor plan.
 
 PROJECT SPECS:
-- Building type: {building_type}
+- Building type: {building_type.value}
 - Total area per floor: {area_per_floor} sqft
-- Approximate building footprint: {approx_width}ft wide x {approx_depth}ft deep
+- Building footprint: {approx_width}ft wide x {approx_depth}ft deep
 - Number of floors: {floors_count}
 - Flats per floor: {flat_cfg.flats_per_floor}
 - Each flat: {flat_cfg.bedrooms} bedrooms, {flat_cfg.bathrooms} bathrooms, {flat_cfg.balconies} balconies
-- Has lift/elevator: {input.amenities.lift}
+- Has lift: {input.amenities.lift}
 - Has parking: {input.amenities.parking}
 
-ARCHITECTURAL RULES (MUST FOLLOW):
-1. The corridor MUST be along one edge (left side or entry side), NOT through the middle of the floor splitting rooms
-2. The elevator/lift MUST be in a common area near the corridor entrance, NOT inside any flat
-3. Staircase MUST be near the corridor/lift area, in common space
-4. Room sizes MUST be proportional and realistic:
-   - Living room: largest room (150-250 sqft)
-   - Bedrooms: medium (120-180 sqft each)
-   - Kitchen: medium-small (80-120 sqft)
-   - Bathrooms: small (35-60 sqft each)
-   - Balconies: small (30-60 sqft each)
-   - Corridor: narrow passage (width 4-5ft)
-5. Rooms in a flat should be ADJACENT and connected logically (not in a single row)
-6. Flats should be side by side, separated by walls
-7. Bathrooms should be NEAR bedrooms
-8. Kitchen should be NEAR the dining/living area
-9. All rooms must fit within the building footprint (0 to {approx_width}ft wide, 0 to {approx_depth}ft deep)
-10. No room overlaps - rooms must tile properly with no gaps in the flat area
+MANDATORY ARCHITECTURAL RULES:
+1. CORRIDOR MUST be in the CENTER of the building running horizontally (along x-axis).
+   - Corridor: x=0, y={round(approx_depth/2 - corridor_width/2, 1)}, width={approx_width}, height={corridor_width}
+   - This splits the building into TOP half and BOTTOM half.
+
+2. FLATS on BOTH SIDES of corridor:
+   - {flats_per_side_left} flats ABOVE the corridor (y from 0 to {round(approx_depth/2 - corridor_width/2, 1)})
+   - {flats_per_side_right} flats BELOW the corridor (y from {round(approx_depth/2 + corridor_width/2, 1)} to {approx_depth})
+
+3. STAIRS + LIFT CORE near center of building:
+   - Staircase and elevator placed at center-left of corridor area
+   - Core width ~{core_width}ft, depth ~{core_depth}ft
+   - Staircase and elevator are NOT inside any flat
+
+4. PLUMBING SHAFT: One vertical shaft per side, bathrooms MUST be adjacent to shaft
+5. DOORS face the corridor (on the wall touching corridor)
+6. WINDOWS only on outer walls (top edge y=0, bottom edge y={approx_depth}, left x=0, right x={approx_width})
+7. Room sizes must be realistic:
+   - Living: 150-250 sqft
+   - Bedroom: 120-180 sqft
+   - Kitchen: 80-130 sqft
+   - Bathroom: 35-60 sqft
+   - Balcony: 30-60 sqft
+8. Rooms MUST tile properly with NO gaps and NO overlaps within each flat area
+9. Bathrooms clustered together near plumbing shaft
 
 COORDINATE SYSTEM:
-- x=0 is left edge, x={approx_width} is right edge
-- y=0 is top edge, y={approx_depth} is bottom edge
-- Each room has x, y (top-left corner), width, height
+- x=0 left edge, x={approx_width} right edge
+- y=0 top edge, y={approx_depth} bottom edge
+- Each room: x, y (top-left), width, height
 
-Return ONLY valid JSON with this exact structure:
+Return ONLY valid JSON:
 {{
   "building_width": {approx_width},
   "building_depth": {approx_depth},
@@ -85,27 +105,23 @@ Return ONLY valid JSON with this exact structure:
       "floor": 0,
       "label": "Ground Floor",
       "rooms": [
-        {{"id": "f0-corridor", "name": "Corridor", "x": 0, "y": 0, "width": 4, "height": {approx_depth}, "type": "corridor"}},
-        {{"id": "f0-lift", "name": "Lift", "x": 0, "y": 0, "width": 5, "height": 5, "type": "elevator"}},
-        {{"id": "f0-stairs", "name": "Staircase", "x": 0, "y": 5, "width": 5, "height": 6, "type": "staircase"}},
-        {{"id": "f0-flat1-living", "name": "Living Room", "x": 4, "y": 0, "width": 16, "height": 12, "type": "living"}},
-        ...more rooms for each flat
+        {{"id": "f0-corridor", "name": "Corridor", "x": 0, "y": {round(approx_depth/2 - corridor_width/2, 1)}, "width": {approx_width}, "height": {corridor_width}, "type": "corridor"}},
+        {{"id": "f0-lift", "name": "Lift", "x": ..., "y": ..., "width": 5, "height": 5, "type": "elevator"}},
+        {{"id": "f0-stairs", "name": "Staircase", "x": ..., "y": ..., "width": 6, "height": 8, "type": "staircase"}},
+        ...rooms for flats above corridor...
+        ...rooms for flats below corridor...
       ],
       "flats": [
-        {{"flat_id": "f0-flat1", "label": "Flat 1", "rooms": ["f0-flat1-living", "f0-flat1-bed1", ...]}},
-        {{"flat_id": "f0-flat2", "label": "Flat 2", "rooms": ["f0-flat2-living", ...]}}
+        {{"flat_id": "f0-flat1", "label": "Flat 1", "rooms": ["f0-flat1-living", ...]}},
+        ...
       ]
     }}
   ]
 }}
 
-IMPORTANT: Generate all {floors_count} floors. Each floor should have the same layout structure but different floor numbers (f0, f1, f2...).
-Make the layout look like a REAL architectural floor plan - varied room sizes, logical adjacency, L-shaped arrangements where appropriate.
-Corridor and common areas (lift, staircase) are NOT part of any flat.
-Room IDs must be unique across all floors."""
+Generate all {floors_count} floors with same layout structure. Room IDs must be unique across floors (f0, f1, f2...).
+Corridor and core areas (lift, staircase) are NOT part of any flat."""
 
-    # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-    # do not change this unless explicitly requested by the user
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
@@ -144,23 +160,318 @@ Room IDs must be unique across all floors."""
             flats=flats,
         ))
 
-    corridor_h = 4
     corridors = []
     for floor in floors:
         corr = next((r for r in floor.rooms if r.type == "corridor"), None)
         if corr:
             corridors.append({"floor": floor.floor, "y": corr.y, "height": corr.height})
-            corridor_h = corr.height
+
+    return _build_blueprint_data(input, floors, corridors, building_w, building_d, "AI-designed")
+
+
+def _validate_blueprint(bp: BlueprintData) -> bool:
+    if not bp.floors:
+        return False
+    for floor in bp.floors:
+        if not floor.rooms or len(floor.rooms) < 3:
+            return False
+        has_corridor = any(r.type == "corridor" for r in floor.rooms)
+        if not has_corridor:
+            return False
+        for room in floor.rooms:
+            if room.width <= 0 or room.height <= 0:
+                return False
+            if room.x < -1 or room.y < -1:
+                return False
+    return True
+
+
+def _procedural_fallback(input: ProjectInput) -> BlueprintData:
+    area = input.area_sqft
+    floors_count = input.floors
+    flat_cfg = input.flat_config
+
+    side = math.sqrt(area)
+    width = round(side * 1.4, 1)
+    depth = round(area / width, 1)
+
+    width = max(width, 40)
+    depth = max(depth, 30)
+
+    corridor_h = 5.0
+    corridor_y = round(depth / 2 - corridor_h / 2, 1)
+
+    core_w = 8.0
+    core_d = corridor_h
+    core_x = round(width / 2 - core_w / 2, 1)
+
+    top_depth = corridor_y
+    bottom_depth = round(depth - corridor_y - corridor_h, 1)
+
+    flats_per_floor = flat_cfg.flats_per_floor
+    flats_top = max(1, flats_per_floor // 2)
+    flats_bottom = flats_per_floor - flats_top
+
+    if flats_bottom == 0:
+        flats_bottom = 1
+        flats_top = max(1, flats_per_floor - 1)
+
+    floors: List[BlueprintFloor] = []
+
+    for f in range(floors_count):
+        floor_label = "Ground Floor" if f == 0 else f"Floor {f}"
+        rooms: List[BlueprintRoom] = []
+        flats_data = []
+
+        rooms.append(BlueprintRoom(
+            id=f"f{f}-corridor",
+            name="Corridor",
+            x=0, y=corridor_y,
+            width=width, height=corridor_h,
+            type="corridor",
+        ))
+
+        if input.amenities.lift:
+            lift_w = 4.0
+            lift_h = 4.0
+            rooms.append(BlueprintRoom(
+                id=f"f{f}-lift",
+                name="Lift",
+                x=core_x, y=corridor_y + 0.5,
+                width=lift_w, height=lift_h,
+                type="elevator",
+            ))
+            rooms.append(BlueprintRoom(
+                id=f"f{f}-stairs",
+                name="Staircase",
+                x=round(core_x + lift_w, 1), y=corridor_y + 0.5,
+                width=round(core_w - lift_w, 1), height=corridor_h - 1,
+                type="staircase",
+            ))
+        else:
+            rooms.append(BlueprintRoom(
+                id=f"f{f}-stairs",
+                name="Staircase",
+                x=core_x, y=corridor_y + 0.5,
+                width=core_w, height=corridor_h - 1,
+                type="staircase",
+            ))
+
+        shaft_top_x = round(width * 0.15, 1)
+        shaft_bottom_x = round(width * 0.15, 1)
+
+        top_flat_width = width / flats_top
+        for fi in range(flats_top):
+            flat_x = round(fi * top_flat_width, 1)
+            fw = round(top_flat_width, 1)
+            if fi == flats_top - 1:
+                fw = round(width - flat_x, 1)
+
+            shaft_x_in_flat = shaft_top_x - flat_x if fi == 0 else None
+
+            flat_rooms = _generate_center_corridor_flat(
+                f, fi, flat_x, 0, fw, top_depth, flat_cfg,
+                side="top", shaft_local_x=shaft_x_in_flat
+            )
+            rooms.extend(flat_rooms)
+            flats_data.append({
+                "flat_id": f"f{f}-flat{fi+1}",
+                "label": f"Flat {fi+1}",
+                "rooms": [r.id for r in flat_rooms],
+            })
+
+        for fi in range(flats_bottom):
+            flat_idx = flats_top + fi
+            bottom_y = round(corridor_y + corridor_h, 1)
+            flat_x = round(fi * (width / flats_bottom), 1)
+            fw = round(width / flats_bottom, 1)
+            if fi == flats_bottom - 1:
+                fw = round(width - flat_x, 1)
+
+            shaft_x_in_flat = shaft_bottom_x - flat_x if fi == 0 else None
+
+            flat_rooms = _generate_center_corridor_flat(
+                f, flat_idx, flat_x, bottom_y, fw, bottom_depth, flat_cfg,
+                side="bottom", shaft_local_x=shaft_x_in_flat
+            )
+            rooms.extend(flat_rooms)
+            flats_data.append({
+                "flat_id": f"f{f}-flat{flat_idx+1}",
+                "label": f"Flat {flat_idx+1}",
+                "rooms": [r.id for r in flat_rooms],
+            })
+
+        floors.append(BlueprintFloor(
+            floor=f,
+            label=floor_label,
+            rooms=rooms,
+            flats=flats_data,
+        ))
+
+    corridors = [{"floor": f, "y": corridor_y, "height": corridor_h} for f in range(floors_count)]
+    return _build_blueprint_data(input, floors, corridors, width, depth, "Procedural")
+
+
+def _generate_center_corridor_flat(
+    floor_idx, flat_idx, start_x, start_y,
+    flat_width, flat_depth, flat_cfg,
+    side="top", shaft_local_x=None
+) -> List[BlueprintRoom]:
+    rooms = []
+    prefix = f"f{floor_idx}-flat{flat_idx+1}"
+    x0 = start_x
+    y0 = start_y
+
+    num_beds = flat_cfg.bedrooms
+    num_baths = flat_cfg.bathrooms
+    num_balconies = flat_cfg.balconies
+
+    bath_w = round(min(flat_width * 0.18, 7), 1)
+    bath_h = round(min(flat_depth * 0.35, 6), 1)
+    balcony_h = round(min(flat_depth * 0.15, 4), 1)
+
+    plumbing_zone_x = x0
+    if shaft_local_x is not None:
+        plumbing_zone_x = round(start_x + shaft_local_x, 1)
+    else:
+        plumbing_zone_x = round(x0 + flat_width * 0.12, 1)
+
+    if side == "top":
+        bath_y = round(y0 + flat_depth - bath_h, 1)
+    else:
+        bath_y = y0
+
+    bx = plumbing_zone_x
+    for b in range(num_baths):
+        rooms.append(BlueprintRoom(
+            id=f"{prefix}-bath{b+1}", name=f"Bath {b+1}",
+            x=round(bx, 1), y=bath_y,
+            width=bath_w, height=bath_h, type="bathroom"
+        ))
+        bx = round(bx + bath_w, 1)
+
+    total_bath_w = num_baths * bath_w
+    remaining_w = flat_width - total_bath_w
+
+    living_w = round(remaining_w * 0.55, 1)
+    kitchen_w = round(remaining_w * 0.45, 1)
+
+    if kitchen_w < 6:
+        kitchen_w = round(remaining_w * 0.5, 1)
+        living_w = round(remaining_w - kitchen_w, 1)
+
+    if side == "top":
+        living_h = round(flat_depth * 0.5, 1)
+        kitchen_h = round(flat_depth * 0.35, 1)
+
+        rooms.append(BlueprintRoom(
+            id=f"{prefix}-living", name="Living Room",
+            x=round(x0 + total_bath_w, 1) if plumbing_zone_x == x0 else x0,
+            y=y0,
+            width=living_w, height=living_h, type="living"
+        ))
+
+        kitchen_x = round(x0 + total_bath_w + living_w, 1) if plumbing_zone_x == x0 else round(x0 + living_w, 1)
+        rooms.append(BlueprintRoom(
+            id=f"{prefix}-kitchen", name="Kitchen",
+            x=kitchen_x, y=y0,
+            width=kitchen_w, height=kitchen_h, type="kitchen"
+        ))
+
+        bed_y = round(y0 + living_h, 1)
+        bed_available_h = round(flat_depth - living_h, 1)
+        bed_available_w = round(flat_width - total_bath_w, 1)
+
+        bed_area_x = round(x0 + total_bath_w, 1) if plumbing_zone_x == x0 else x0
+
+        if num_beds > 0:
+            bed_w = round(bed_available_w / num_beds, 1)
+            for b in range(num_beds):
+                bx_pos = round(bed_area_x + b * bed_w, 1)
+                actual_w = bed_w
+                if b == num_beds - 1:
+                    actual_w = round(x0 + flat_width - bx_pos, 1)
+                rooms.append(BlueprintRoom(
+                    id=f"{prefix}-bed{b+1}", name=f"Bedroom {b+1}",
+                    x=bx_pos, y=bed_y,
+                    width=actual_w, height=bed_available_h, type="bedroom"
+                ))
+    else:
+        living_h = round(flat_depth * 0.5, 1)
+        kitchen_h = round(flat_depth * 0.35, 1)
+
+        bed_available_h = round(flat_depth - bath_h, 1)
+        bed_area_y = round(y0 + bath_h, 1)
+
+        living_y = bed_area_y
+        kitchen_y = bed_area_y
+
+        rooms.append(BlueprintRoom(
+            id=f"{prefix}-living", name="Living Room",
+            x=round(x0 + total_bath_w, 1) if plumbing_zone_x == x0 else x0,
+            y=round(y0 + flat_depth - living_h, 1),
+            width=living_w, height=living_h, type="living"
+        ))
+
+        kitchen_x = round(x0 + total_bath_w + living_w, 1) if plumbing_zone_x == x0 else round(x0 + living_w, 1)
+        rooms.append(BlueprintRoom(
+            id=f"{prefix}-kitchen", name="Kitchen",
+            x=kitchen_x,
+            y=round(y0 + flat_depth - kitchen_h, 1),
+            width=kitchen_w, height=kitchen_h, type="kitchen"
+        ))
+
+        bed_available_w = round(flat_width - total_bath_w, 1)
+        bed_area_x = round(x0 + total_bath_w, 1) if plumbing_zone_x == x0 else x0
+        bed_h = round(flat_depth - max(living_h, kitchen_h), 1)
+
+        if num_beds > 0 and bed_h > 3:
+            bed_w = round(bed_available_w / num_beds, 1)
+            for b in range(num_beds):
+                bx_pos = round(bed_area_x + b * bed_w, 1)
+                actual_w = bed_w
+                if b == num_beds - 1:
+                    actual_w = round(x0 + flat_width - bx_pos, 1)
+                rooms.append(BlueprintRoom(
+                    id=f"{prefix}-bed{b+1}", name=f"Bedroom {b+1}",
+                    x=bx_pos, y=bed_area_y,
+                    width=actual_w, height=bed_h, type="bedroom"
+                ))
+
+    if num_balconies > 0:
+        balcony_w = round(flat_width / num_balconies, 1)
+        for b in range(num_balconies):
+            bx_pos = round(x0 + b * balcony_w, 1)
+            if side == "top":
+                by_pos = y0
+                rooms.append(BlueprintRoom(
+                    id=f"{prefix}-balcony{b+1}", name=f"Balcony {b+1}",
+                    x=bx_pos, y=round(by_pos - balcony_h, 1) if by_pos > balcony_h else by_pos,
+                    width=balcony_w, height=balcony_h, type="balcony"
+                ))
+            else:
+                rooms.append(BlueprintRoom(
+                    id=f"{prefix}-balcony{b+1}", name=f"Balcony {b+1}",
+                    x=bx_pos, y=round(y0 + flat_depth, 1),
+                    width=balcony_w, height=balcony_h, type="balcony"
+                ))
+
+    return rooms
+
+
+def _build_blueprint_data(input, floors, corridors, width, depth, design_label):
+    floors_count = input.floors
+    flat_cfg = input.flat_config
+    building_type = input.building_type
 
     terrace = {
-        "area_sqft": round(building_w * building_d, 1),
+        "area_sqft": round(width * depth, 1),
         "has_railing": True,
         "water_proofing": True,
     }
-
     roof = {
         "type": "RCC flat roof" if floors_count > 1 else "Sloped roof",
-        "area_sqft": round(building_w * building_d, 1),
+        "area_sqft": round(width * depth, 1),
     }
 
     water_tanks_list = []
@@ -176,7 +487,6 @@ Room IDs must be unique across all floors."""
         {"id": "lighting", "type": "single-phase", "from": "DB", "to": "all-rooms"},
         {"id": "power", "type": "3-phase", "from": "DB", "to": "heavy-appliances"},
     ]
-
     water_lines = [
         {"id": "main-inlet", "from": input.utilities.water_supply, "to": "overhead-tank"},
         {"id": "distribution", "from": "overhead-tank", "to": "all-flats"},
@@ -186,11 +496,11 @@ Room IDs must be unique across all floors."""
     total_rooms = sum(len(fl.rooms) for fl in floors)
     btype = building_type.value if hasattr(building_type, 'value') else str(building_type)
     overview = (
-        f"AI-designed {floors_count}-floor {btype} building, {round(building_w)}ft x {round(building_d)}ft. "
-        f"{flat_cfg.flats_per_floor} flats per floor, {total_rooms} total rooms across all floors. "
+        f"{design_label} {floors_count}-floor {btype} building, {round(width)}ft x {round(depth)}ft. "
+        f"Center corridor with flats on both sides. "
+        f"{flat_cfg.flats_per_floor} flats per floor, {total_rooms} total rooms. "
         f"Each flat: {flat_cfg.bedrooms} BHK with {flat_cfg.bathrooms} bathrooms."
     )
-
     component_breakdown = [
         {"component": "Floors", "count": floors_count},
         {"component": "Flats per floor", "count": flat_cfg.flats_per_floor},
@@ -213,244 +523,3 @@ Room IDs must be unique across all floors."""
         overview=overview,
         component_breakdown=component_breakdown,
     )
-
-
-def _validate_blueprint(bp: BlueprintData) -> bool:
-    if not bp.floors:
-        return False
-    for floor in bp.floors:
-        if not floor.rooms or len(floor.rooms) < 3:
-            return False
-        for room in floor.rooms:
-            if room.width <= 0 or room.height <= 0:
-                return False
-            if room.x < -1 or room.y < -1:
-                return False
-    return True
-
-
-def _procedural_fallback(input: ProjectInput) -> BlueprintData:
-    area = input.area_sqft
-    floors_count = input.floors
-    flat_cfg = input.flat_config
-    building_type = input.building_type
-
-    side = math.sqrt(area)
-    width = round(side * 1.3, 1)
-    depth = round(area / width, 1)
-
-    floors: List[BlueprintFloor] = []
-
-    for f in range(floors_count):
-        floor_label = "Ground Floor" if f == 0 else f"Floor {f}"
-        rooms: List[BlueprintRoom] = []
-        flats_data = []
-
-        corridor_w = 4.5
-        rooms.append(BlueprintRoom(
-            id=f"f{f}-corridor",
-            name="Corridor",
-            x=0, y=0,
-            width=corridor_w, height=depth,
-            type="corridor",
-        ))
-
-        if input.amenities.lift:
-            lift_size = 5
-            rooms.append(BlueprintRoom(
-                id=f"f{f}-lift",
-                name="Lift",
-                x=0, y=0,
-                width=lift_size, height=lift_size,
-                type="elevator",
-            ))
-            rooms.append(BlueprintRoom(
-                id=f"f{f}-stairs",
-                name="Staircase",
-                x=0, y=lift_size,
-                width=lift_size, height=6,
-                type="staircase",
-            ))
-        else:
-            rooms.append(BlueprintRoom(
-                id=f"f{f}-stairs",
-                name="Staircase",
-                x=0, y=0,
-                width=corridor_w, height=6,
-                type="staircase",
-            ))
-
-        flats_per_floor = flat_cfg.flats_per_floor
-        usable_width = width - corridor_w
-        flat_depth_each = depth / flats_per_floor
-
-        for fi in range(flats_per_floor):
-            flat_y = round(fi * flat_depth_each, 1)
-            flat_rooms = _generate_realistic_flat(
-                f, fi, corridor_w, flat_y,
-                usable_width, flat_depth_each, flat_cfg
-            )
-            rooms.extend(flat_rooms)
-            flats_data.append({
-                "flat_id": f"f{f}-flat{fi+1}",
-                "label": f"Flat {fi+1}",
-                "rooms": [r.id for r in flat_rooms],
-            })
-
-        floors.append(BlueprintFloor(
-            floor=f,
-            label=floor_label,
-            rooms=rooms,
-            flats=flats_data,
-        ))
-
-    corridor_h = 4.5
-    terrace = {
-        "area_sqft": round(width * depth, 1),
-        "has_railing": True,
-        "water_proofing": True,
-    }
-    roof = {
-        "type": "RCC flat roof" if floors_count > 1 else "Sloped roof",
-        "area_sqft": round(width * depth, 1),
-    }
-
-    water_tanks_list = []
-    for i in range(input.utilities.water_tanks):
-        water_tanks_list.append({
-            "id": f"tank-{i+1}",
-            "capacity_litres": 1000 + (int(input.area_sqft) // 500) * 500,
-            "location": "terrace" if i % 2 == 0 else "underground",
-        })
-
-    electrical_lines = [
-        {"id": "main-supply", "type": "3-phase", "from": "meter", "to": "DB"},
-        {"id": "lighting", "type": "single-phase", "from": "DB", "to": "all-rooms"},
-        {"id": "power", "type": "3-phase", "from": "DB", "to": "heavy-appliances"},
-    ]
-    water_lines = [
-        {"id": "main-inlet", "from": input.utilities.water_supply, "to": "overhead-tank"},
-        {"id": "distribution", "from": "overhead-tank", "to": "all-flats"},
-        {"id": "drainage", "from": "all-flats", "to": "septic/sewer"},
-    ]
-
-    total_rooms = sum(len(fl.rooms) for fl in floors)
-    btype = building_type.value if hasattr(building_type, 'value') else str(building_type)
-    overview = (
-        f"{floors_count}-floor {btype} building, {round(width)}ft x {round(depth)}ft. "
-        f"{flat_cfg.flats_per_floor} flats per floor, {total_rooms} total rooms across all floors."
-    )
-    component_breakdown = [
-        {"component": "Floors", "count": floors_count},
-        {"component": "Flats per floor", "count": flat_cfg.flats_per_floor},
-        {"component": "Total flats", "count": flat_cfg.flats_per_floor * floors_count},
-        {"component": "Bedrooms per flat", "count": flat_cfg.bedrooms},
-        {"component": "Bathrooms per flat", "count": flat_cfg.bathrooms},
-        {"component": "Total rooms", "count": total_rooms},
-        {"component": "Water tanks", "count": input.utilities.water_tanks},
-    ]
-
-    return BlueprintData(
-        floors=floors,
-        corridors=[{"floor": f, "y": 0, "height": corridor_h} for f in range(floors_count)],
-        terrace=terrace,
-        roof=roof,
-        water_tanks=water_tanks_list,
-        electrical_lines=electrical_lines,
-        water_lines=water_lines,
-        overview=overview,
-        component_breakdown=component_breakdown,
-    )
-
-
-def _generate_realistic_flat(
-    floor_idx, flat_idx, start_x, start_y,
-    flat_width, flat_depth, flat_cfg
-) -> List[BlueprintRoom]:
-    rooms = []
-    prefix = f"f{floor_idx}-flat{flat_idx+1}"
-    x0 = start_x
-    y0 = start_y
-
-    living_w = round(flat_width * 0.5, 1)
-    living_h = round(flat_depth * 0.45, 1)
-    rooms.append(BlueprintRoom(
-        id=f"{prefix}-living", name="Living Room",
-        x=x0, y=y0, width=living_w, height=living_h, type="living"
-    ))
-
-    kitchen_w = round(flat_width - living_w, 1)
-    kitchen_h = round(flat_depth * 0.3, 1)
-    rooms.append(BlueprintRoom(
-        id=f"{prefix}-kitchen", name="Kitchen",
-        x=round(x0 + living_w, 1), y=y0, width=kitchen_w, height=kitchen_h, type="kitchen"
-    ))
-
-    dining_w = kitchen_w
-    dining_h = round(flat_depth * 0.15, 1)
-    if dining_h > 3:
-        rooms.append(BlueprintRoom(
-            id=f"{prefix}-dining", name="Dining",
-            x=round(x0 + living_w, 1), y=round(y0 + kitchen_h, 1),
-            width=dining_w, height=dining_h, type="dining"
-        ))
-
-    bed_y = round(y0 + living_h, 1)
-    bed_h = round(flat_depth - living_h, 1)
-    num_beds = flat_cfg.bedrooms
-    num_baths = flat_cfg.bathrooms
-    num_balconies = flat_cfg.balconies
-
-    bed_w = round(flat_width * 0.35, 1)
-    bath_w = round(flat_width * 0.15, 1)
-    balcony_w = round(flat_width * 0.12, 1)
-
-    total_needed = num_beds * bed_w + num_baths * bath_w + num_balconies * balcony_w
-    if total_needed > flat_width and total_needed > 0:
-        scale = flat_width / total_needed
-        bed_w = round(bed_w * scale, 1)
-        bath_w = round(bath_w * scale, 1)
-        balcony_w = round(balcony_w * scale, 1)
-
-    cx = x0
-    for b in range(num_beds):
-        rooms.append(BlueprintRoom(
-            id=f"{prefix}-bed{b+1}", name=f"Bedroom {b+1}",
-            x=round(cx, 1), y=bed_y, width=bed_w, height=bed_h, type="bedroom"
-        ))
-
-        if b < num_baths:
-            rooms.append(BlueprintRoom(
-                id=f"{prefix}-bath{b+1}", name=f"Bath {b+1}",
-                x=round(cx + bed_w, 1), y=bed_y,
-                width=bath_w, height=round(bed_h * 0.6, 1), type="bathroom"
-            ))
-            if b < num_balconies:
-                rooms.append(BlueprintRoom(
-                    id=f"{prefix}-balcony{b+1}", name=f"Balcony {b+1}",
-                    x=round(cx + bed_w, 1), y=round(bed_y + bed_h * 0.6, 1),
-                    width=bath_w, height=round(bed_h * 0.4, 1), type="balcony"
-                ))
-            cx += bed_w + bath_w
-        else:
-            cx += bed_w
-
-    remaining_baths = max(0, num_baths - num_beds)
-    for b in range(remaining_baths):
-        rooms.append(BlueprintRoom(
-            id=f"{prefix}-bath{num_beds + b + 1}", name=f"Bath {num_beds + b + 1}",
-            x=round(cx, 1), y=bed_y,
-            width=bath_w, height=round(bed_h * 0.5, 1), type="bathroom"
-        ))
-        cx += bath_w
-
-    remaining_balconies = max(0, num_balconies - num_beds)
-    for b in range(remaining_balconies):
-        rooms.append(BlueprintRoom(
-            id=f"{prefix}-balcony{num_beds + b + 1}", name=f"Balcony",
-            x=round(cx, 1), y=bed_y,
-            width=balcony_w, height=round(bed_h * 0.4, 1), type="balcony"
-        ))
-        cx += balcony_w
-
-    return rooms
